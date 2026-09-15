@@ -108,15 +108,20 @@ export default function Home() {
     setProgress({ completed: 0, total: 0, currentCandidate: '' });
     setErrorMessage(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/screen`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
       const resData = await response.json();
 
       if (!response.ok) {
@@ -148,7 +153,9 @@ export default function Home() {
         saveHistoryToStorage(updatedHistory);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error occurred while contacting backend server.');
+      clearTimeout(timeoutId);
+      const msg = err.name === 'AbortError' ? 'Screening request timed out. Please check your sheet URL.' : (err.message || 'Error occurred while contacting backend server.');
+      setErrorMessage(msg);
       setIsLoading(false);
     }
   };
