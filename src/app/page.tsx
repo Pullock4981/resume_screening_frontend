@@ -11,6 +11,7 @@ import CandidateDetailModal from '../components/CandidateDetailModal';
 import SkillRulesView from '../components/SkillRulesView';
 import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
+import ProjectDashboardView from '../components/ProjectDashboardView';
 import { CandidateResult } from '../types';
 
 export default function Home() {
@@ -25,6 +26,7 @@ export default function Home() {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('latest');
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
 
@@ -152,7 +154,7 @@ export default function Home() {
   };
 
   const handleSelectHistoryRecord = (record: HistoryRecord) => {
-    setCandidates(record.candidates || []);
+    setSelectedProjectId(record.id);
     setIsFinished(true);
     setActiveTab('dashboard');
   };
@@ -249,52 +251,20 @@ export default function Home() {
             </div>
           )}
 
-          {/* TAB 2: Dashboard & Results */}
+          {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-extrabold tracking-tight">Candidate Results & Analytics</h2>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Real-time evaluation table and metric indicators.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveTab('screening')}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition"
-                >
-                  + New Screening Batch
-                </button>
-              </div>
-
-              {/* Progress Bar */}
-              {(isLoading || isFinished || progress.total > 0) && (
-                <ProgressBar
-                  completed={progress.completed}
-                  total={progress.total}
-                  currentCandidate={progress.currentCandidate}
-                  isFinished={isFinished}
-                  theme={theme}
-                />
-              )}
-
-              {/* Metric Cards */}
-              <SummaryCards
-                candidates={candidates}
-                theme={theme}
-                activeCategory={filterCategory}
-                onSelectCategory={setFilterCategory}
-              />
-
-              {/* Candidate Table */}
-              <CandidateTable
-                candidates={candidates}
-                onSelectCandidate={setSelectedCandidate}
-                theme={theme}
-                filterCategory={filterCategory}
-                setFilterCategory={setFilterCategory}
-              />
-            </div>
+            <ProjectDashboardView
+              theme={theme}
+              historyRecords={historyRecords}
+              activeCandidates={candidates}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={setSelectedProjectId}
+              onNewScreening={() => setActiveTab('screening')}
+              onSelectCandidate={setSelectedCandidate}
+              isLoading={isLoading}
+              isFinished={isFinished}
+              progress={progress}
+            />
           )}
 
           {/* TAB 3: Screening History */}
