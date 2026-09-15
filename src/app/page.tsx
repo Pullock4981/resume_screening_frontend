@@ -24,7 +24,7 @@ export default function Home() {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
 
   useEffect(() => {
     // Setup SSE listener for real-time progress stream
