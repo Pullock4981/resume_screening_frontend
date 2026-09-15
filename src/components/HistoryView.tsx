@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, Filter } from 'lucide-react';
+import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, Filter, RefreshCw } from 'lucide-react';
 import { CandidateResult } from '../types';
 
 export interface HistoryRecord {
@@ -23,6 +23,8 @@ interface HistoryViewProps {
   onSelectRecord: (record: HistoryRecord) => void;
   onClearHistory: () => void;
   onDeleteRecord: (id: string) => void;
+  onSyncHistory?: () => void;
+  isSyncing?: boolean;
 }
 
 export default function HistoryView({
@@ -30,7 +32,9 @@ export default function HistoryView({
   historyRecords,
   onSelectRecord,
   onClearHistory,
-  onDeleteRecord
+  onDeleteRecord,
+  onSyncHistory,
+  isSyncing = false
 }: HistoryViewProps) {
   const isDark = theme === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,22 +68,39 @@ export default function HistoryView({
             Screening History ({sortedRecords.length})
           </h2>
           <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            List of all past candidate evaluation runs (Most recent batches shown first).
+            List of all past candidate evaluation runs (Auto-synchronized with Google Sheet).
           </p>
         </div>
 
-        {sortedRecords.length > 0 && (
-          <button
-            onClick={onClearHistory}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition ${
-              isDark
-                ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
-                : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
-            }`}
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Clear All History
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onSyncHistory && (
+            <button
+              onClick={onSyncHistory}
+              disabled={isSyncing}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+                isDark
+                  ? 'bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border-indigo-500/30'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync with Google Sheet'}</span>
+            </button>
+          )}
+
+          {sortedRecords.length > 0 && (
+            <button
+              onClick={onClearHistory}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition ${
+                isDark
+                  ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/20'
+                  : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear History
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search Filter */}

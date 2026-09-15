@@ -27,10 +27,11 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('latest');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
 
-  // Load history from localStorage on initial mount
+  // Load history from localStorage and sync with Google Sheets on initial mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('screening_history');
@@ -40,6 +41,7 @@ export default function Home() {
     } catch (e) {
       console.error('Failed to load screening history:', e);
     }
+    syncHistoryWithGoogleSheets();
   }, []);
 
   // Save history to localStorage
@@ -49,6 +51,23 @@ export default function Home() {
       localStorage.setItem('screening_history', JSON.stringify(updated));
     } catch (e) {
       console.error('Failed to save screening history:', e);
+    }
+  };
+
+  const syncHistoryWithGoogleSheets = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/history`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.history && Array.isArray(data.history)) {
+          saveHistoryToStorage(data.history);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync history from Google Sheets:', e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -282,6 +301,8 @@ export default function Home() {
               onSelectRecord={handleSelectHistoryRecord}
               onClearHistory={handleClearHistory}
               onDeleteRecord={handleDeleteHistoryRecord}
+              onSyncHistory={syncHistoryWithGoogleSheets}
+              isSyncing={isSyncing}
             />
           )}
 
