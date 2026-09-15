@@ -11,15 +11,17 @@ import {
   Moon,
   Database,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  History
 } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'dashboard' | 'dictionary' | 'guide';
-  setActiveTab: (tab: 'screening' | 'dashboard' | 'dictionary' | 'guide') => void;
+  activeTab: 'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide';
+  setActiveTab: (tab: 'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide') => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
+  historyCount?: number;
 }
 
 export default function Sidebar({
@@ -27,7 +29,8 @@ export default function Sidebar({
   setActiveTab,
   theme,
   setTheme,
-  candidateCount
+  candidateCount,
+  historyCount = 0
 }: SidebarProps) {
   const isDark = theme === 'dark';
 
@@ -43,6 +46,12 @@ export default function Sidebar({
       label: 'Dashboard & Results',
       icon: LayoutDashboard,
       badge: candidateCount > 0 ? candidateCount : null
+    },
+    {
+      id: 'history' as const,
+      label: 'Screening History',
+      icon: History,
+      badge: historyCount > 0 ? historyCount : null
     },
     {
       id: 'dictionary' as const,

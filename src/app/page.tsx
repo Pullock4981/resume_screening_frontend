@@ -10,10 +10,11 @@ import CandidateTable from '../components/CandidateTable';
 import CandidateDetailModal from '../components/CandidateDetailModal';
 import SkillRulesView from '../components/SkillRulesView';
 import SetupGuideView from '../components/SetupGuideView';
+import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import { CandidateResult } from '../types';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'screening' | 'dashboard' | 'dictionary' | 'guide'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -23,8 +24,31 @@ export default function Home() {
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+
+  // Load history from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('screening_history');
+      if (saved) {
+        setHistoryRecords(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Failed to load screening history:', e);
+    }
+  }, []);
+
+  // Save history to localStorage
+  const saveHistoryToStorage = (updated: HistoryRecord[]) => {
+    setHistoryRecords(updated);
+    try {
+      localStorage.setItem('screening_history', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save screening history:', e);
+    }
+  };
 
   useEffect(() => {
     // Setup SSE listener for real-time progress stream
@@ -98,14 +122,50 @@ export default function Home() {
       }
 
       if (resData.data && resData.data.results) {
-        setCandidates(resData.data.results);
+        const resultsList: CandidateResult[] = resData.data.results;
+        setCandidates(resultsList);
         setIsFinished(true);
         setIsLoading(false);
+
+        // Record history entry
+        const now = new Date();
+        const newRecord: HistoryRecord = {
+          id: Date.now().toString(),
+          operationName: formData.operationName || `Batch_${now.toLocaleDateString()}`,
+          timestamp: now.toISOString(),
+          dateFormatted: now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
+          studentSheetUrl: formData.sheetUrl,
+          totalCandidates: resultsList.length,
+          goodToGoCount: resultsList.filter(c => c.finalScore >= 90).length,
+          waitingListCount: resultsList.filter(c => c.finalScore >= 70 && c.finalScore < 90).length,
+          notMatchingCount: resultsList.filter(c => c.finalScore < 70).length,
+          candidates: resultsList
+        };
+
+        const updatedHistory = [newRecord, ...historyRecords];
+        saveHistoryToStorage(updatedHistory);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred while contacting backend server.');
       setIsLoading(false);
     }
+  };
+
+  const handleSelectHistoryRecord = (record: HistoryRecord) => {
+    setCandidates(record.candidates || []);
+    setIsFinished(true);
+    setActiveTab('dashboard');
+  };
+
+  const handleClearHistory = () => {
+    if (confirm('Are you sure you want to clear all screening history?')) {
+      saveHistoryToStorage([]);
+    }
+  };
+
+  const handleDeleteHistoryRecord = (id: string) => {
+    const updated = historyRecords.filter(r => r.id !== id);
+    saveHistoryToStorage(updated);
   };
 
   const isDark = theme === 'dark';
@@ -121,6 +181,7 @@ export default function Home() {
         theme={theme}
         setTheme={setTheme}
         candidateCount={candidates.length}
+        historyCount={historyRecords.length}
       />
 
       {/* Main Right Content Panel */}
@@ -236,10 +297,21 @@ export default function Home() {
             </div>
           )}
 
-          {/* TAB 3: Skill Rules & ATS Dataset */}
+          {/* TAB 3: Screening History */}
+          {activeTab === 'history' && (
+            <HistoryView
+              theme={theme}
+              historyRecords={historyRecords}
+              onSelectRecord={handleSelectHistoryRecord}
+              onClearHistory={handleClearHistory}
+              onDeleteRecord={handleDeleteHistoryRecord}
+            />
+          )}
+
+          {/* TAB 4: Skill Rules & ATS Dataset */}
           {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}
 
-          {/* TAB 4: Google Sheet Setup Guide */}
+          {/* TAB 5: Google Sheet Setup Guide */}
           {activeTab === 'guide' && <SetupGuideView theme={theme} />}
         </main>
 
