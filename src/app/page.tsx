@@ -140,16 +140,68 @@ export default function Home() {
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-      const resData = await response.json();
-
       if (!response.ok) {
-        throw new Error(resData.error || 'Failed to execute screening process.');
+        throw new Error('Failed to execute screening process.');
       }
 
-      if (resData.data && resData.data.results) {
-        const resultsList: CandidateResult[] = resData.data.results;
+      if (!response.body) {
+        throw new Error('Response stream unreadable.');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let finalOutcome: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep partial line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line.trim());
+            if (data.status === 'started' || data.status === 'processing') {
+              setProgress({
+                completed: data.completed || 0,
+                total: data.total || 0,
+                currentCandidate: data.currentCandidate || ''
+              });
+
+              if (data.result) {
+                setCandidates(prev => {
+                  const existsIdx = prev.findIndex(c => c.name === data.result.name && c.email === data.result.email);
+                  if (existsIdx !== -1) {
+                    const updated = [...prev];
+                    updated[existsIdx] = data.result;
+                    return updated;
+                  }
+                  return [...prev, data.result];
+                });
+              }
+            } else if (data.status === 'completed') {
+              finalOutcome = data.data;
+            } else if (data.status === 'error') {
+              throw new Error(data.error || 'Screening process error occurred.');
+            }
+          } catch (jsonErr: any) {
+            if (jsonErr.message && jsonErr.message.includes('Screening process error')) {
+              throw jsonErr;
+            }
+          }
+        }
+      }
+
+      clearTimeout(timeoutId);
+
+      if (finalOutcome && finalOutcome.results) {
+        const resultsList: CandidateResult[] = finalOutcome.results;
         setCandidates(resultsList);
+        setProgress({ completed: resultsList.length, total: resultsList.length, currentCandidate: '' });
         setIsFinished(true);
         setIsLoading(false);
 
@@ -170,6 +222,9 @@ export default function Home() {
 
         const updatedHistory = [newRecord, ...historyRecords];
         saveHistoryToStorage(updatedHistory);
+      } else {
+        setIsFinished(true);
+        setIsLoading(false);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
