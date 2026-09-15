@@ -13,7 +13,10 @@ interface ProgressBarProps {
 
 export default function ProgressBar({ completed, total, currentCandidate, isFinished, theme = 'dark' }: ProgressBarProps) {
   const isDark = theme === 'dark';
-  const percentage = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+  
+  const displayTotal = total > 0 ? total : completed;
+  const displayCompleted = isFinished ? displayTotal : completed;
+  const percentage = isFinished ? 100 : (displayTotal > 0 ? Math.min(100, Math.round((displayCompleted / displayTotal) * 100)) : 0);
 
   return (
     <div className={`w-full border backdrop-blur-md rounded-2xl p-5 shadow-xl space-y-3 transition-colors duration-200 ${
@@ -38,7 +41,7 @@ export default function ProgressBar({ completed, total, currentCandidate, isFini
               <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
                 isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
               }`}>
-                {completed} / {total} Completed
+                {displayCompleted} / {displayTotal} Completed
               </span>
             </h3>
             {currentCandidate && !isFinished && (
