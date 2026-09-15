@@ -1,0 +1,23 @@
+export const skillsList = [
+  { name: "JavaScript", aliases: ["js", "ecmascript", "vanilla js", "vanillajs", "javascript"] },
+  { name: "TypeScript", aliases: ["ts", "typescript"] },
+  { name: "React", aliases: ["react.js", "reactjs", "react", "react native"] },
+  { name: "Next.js", aliases: ["nextjs", "next.js", "next"] },
+  { name: "Node.js", aliases: ["nodejs", "node.js", "node", "express", "express.js"] },
+  { name: "Python", aliases: ["python", "py", "django", "flask", "fastapi"] },
+  { name: "Java", aliases: ["java", "spring", "spring boot"] },
+  { name: "C++", aliases: ["c++", "cpp"] },
+  { name: "C#", aliases: ["c#", "csharp", ".net", "dotnet"] },
+  { name: "PHP", aliases: ["php", "laravel", "codeigniter", "wordpress"] },
+  { name: "HTML/CSS", aliases: ["html", "html5", "css", "css3", "sass", "tailwind", "bootstrap"] },
+  { name: "SQL", aliases: ["sql", "mysql", "postgresql", "postgres", "sqlite", "oracle"] },
+  { name: "MongoDB", aliases: ["mongodb", "mongo", "mongoose"] },
+  { name: "Redis", aliases: ["redis"] },
+  { name: "AWS", aliases: ["aws", "amazon web services", "s3", "ec2"] },
+  { name: "Docker", aliases: ["docker", "containerization"] },
+  { name: "Kubernetes", aliases: ["kubernetes", "k8s"] },
+  { name: "Git", aliases: ["git", "github", "gitlab", "version control"] },
+  { name: "REST API", aliases: ["rest", "rest api", "restful", "json api"] },
+  { name: "GraphQL", aliases: ["graphql", "apollo"] },
+  { name: "DevOps", aliases: ["devops", "ci/cd", "jenkins"] }
+];
