@@ -1,23 +1,79 @@
-export const skillsList = [
+export interface SkillDefinition {
+  name: string;
+  aliases: string[];
+}
+
+export const skillsList: SkillDefinition[] = [
+  // Programming Languages
   { name: "JavaScript", aliases: ["js", "ecmascript", "vanilla js", "vanillajs", "javascript"] },
   { name: "TypeScript", aliases: ["ts", "typescript"] },
-  { name: "React", aliases: ["react.js", "reactjs", "react", "react native"] },
-  { name: "Next.js", aliases: ["nextjs", "next.js", "next"] },
-  { name: "Node.js", aliases: ["nodejs", "node.js", "node", "express", "express.js"] },
-  { name: "Python", aliases: ["python", "py", "django", "flask", "fastapi"] },
-  { name: "Java", aliases: ["java", "spring", "spring boot"] },
+  { name: "Python", aliases: ["python", "py"] },
+  { name: "Java", aliases: ["java"] },
   { name: "C++", aliases: ["c++", "cpp"] },
   { name: "C#", aliases: ["c#", "csharp", ".net", "dotnet"] },
-  { name: "PHP", aliases: ["php", "laravel", "codeigniter", "wordpress"] },
-  { name: "HTML/CSS", aliases: ["html", "html5", "css", "css3", "sass", "tailwind", "bootstrap"] },
-  { name: "SQL", aliases: ["sql", "mysql", "postgresql", "postgres", "sqlite", "oracle"] },
+  { name: "PHP", aliases: ["php"] },
+  { name: "Go", aliases: ["golang", "go lang", "go"] },
+  { name: "Rust", aliases: ["rust"] },
+  { name: "Kotlin", aliases: ["kotlin"] },
+  { name: "Swift", aliases: ["swift"] },
+  { name: "Ruby", aliases: ["ruby", "rails", "ruby on rails"] },
+
+  // Frontend Frameworks & Styling
+  { name: "React", aliases: ["react", "react.js", "reactjs"] },
+  { name: "Next.js", aliases: ["nextjs", "next.js", "next"] },
+  { name: "Vue.js", aliases: ["vue", "vue.js", "vuejs"] },
+  { name: "Angular", aliases: ["angular", "angularjs"] },
+  { name: "Svelte", aliases: ["svelte", "sveltekit"] },
+  { name: "HTML/CSS", aliases: ["html", "html5", "css", "css3"] },
+  { name: "Tailwind CSS", aliases: ["tailwind", "tailwindcss", "tailwind css"] },
+  { name: "Bootstrap", aliases: ["bootstrap"] },
+  { name: "Sass/SCSS", aliases: ["sass", "scss"] },
+  { name: "Redux", aliases: ["redux", "redux toolkit", "zustand"] },
+
+  // Backend Frameworks
+  { name: "Node.js", aliases: ["nodejs", "node.js", "node"] },
+  { name: "Express.js", aliases: ["express", "express.js", "expressjs"] },
+  { name: "NestJS", aliases: ["nestjs", "nest.js"] },
+  { name: "Django", aliases: ["django"] },
+  { name: "Flask", aliases: ["flask"] },
+  { name: "FastAPI", aliases: ["fastapi"] },
+  { name: "Laravel", aliases: ["laravel", "codeigniter"] },
+  { name: "Spring Boot", aliases: ["spring boot", "springboot", "spring"] },
+
+  // Mobile Development
+  { name: "React Native", aliases: ["react native", "react-native"] },
+  { name: "Flutter", aliases: ["flutter", "dart"] },
+  { name: "Android", aliases: ["android"] },
+  { name: "iOS", aliases: ["ios"] },
+
+  // Databases & Storage
+  { name: "PostgreSQL", aliases: ["postgresql", "postgres", "pgsql"] },
+  { name: "MySQL", aliases: ["mysql"] },
+  { name: "SQL", aliases: ["sql", "sqlite", "oracle", "mssql"] },
   { name: "MongoDB", aliases: ["mongodb", "mongo", "mongoose"] },
   { name: "Redis", aliases: ["redis"] },
-  { name: "AWS", aliases: ["aws", "amazon web services", "s3", "ec2"] },
+  { name: "Firebase", aliases: ["firebase", "firestore"] },
+  { name: "Prisma", aliases: ["prisma"] },
+  { name: "Sequelize", aliases: ["sequelize"] },
+  { name: "Elasticsearch", aliases: ["elasticsearch", "elastic search"] },
+
+  // Cloud & DevOps
+  { name: "AWS", aliases: ["aws", "amazon web services", "s3", "ec2", "lambda"] },
+  { name: "Google Cloud", aliases: ["gcp", "google cloud", "google cloud platform"] },
+  { name: "Azure", aliases: ["azure", "microsoft azure"] },
   { name: "Docker", aliases: ["docker", "containerization"] },
   { name: "Kubernetes", aliases: ["kubernetes", "k8s"] },
-  { name: "Git", aliases: ["git", "github", "gitlab", "version control"] },
-  { name: "REST API", aliases: ["rest", "rest api", "restful", "json api"] },
+  { name: "Git", aliases: ["git", "github", "gitlab", "bitbucket", "version control"] },
+  { name: "CI/CD", aliases: ["ci/cd", "cicd", "github actions", "jenkins", "circleci"] },
+  { name: "Terraform", aliases: ["terraform"] },
+  { name: "Linux", aliases: ["linux", "ubuntu", "bash", "shell scripting"] },
+
+  // APIs & Architecture
+  { name: "REST API", aliases: ["rest", "rest api", "restful", "json api", "web api"] },
   { name: "GraphQL", aliases: ["graphql", "apollo"] },
-  { name: "DevOps", aliases: ["devops", "ci/cd", "jenkins"] }
+  { name: "WebSockets", aliases: ["websocket", "websockets", "socket.io"] },
+  { name: "Microservices", aliases: ["microservices", "distributed systems"] },
+  { name: "Kafka", aliases: ["kafka", "apache kafka", "rabbitmq", "message queue"] },
+  { name: "Unit Testing", aliases: ["jest", "mocha", "cypress", "unit testing", "testing", "selenium", "playwright", "vitest"] },
+  { name: "Agile/Scrum", aliases: ["agile", "scrum", "jira", "kanban"] }
 ];
