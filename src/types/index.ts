@@ -44,3 +44,36 @@ export interface ScreeningData {
     niceToHave: string[];
   };
 }
+
+export interface AtsRubricCategory {
+  score: number;
+  max: number;
+  details: string[];
+  matchedKeywords?: string[];
+  missingKeywords?: string[];
+}
+
+export interface AtsRubricResult {
+  name: string;
+  email: string;
+  phone: string;
+  resumeLink: string;
+  totalScore: number;
+  grade: 'Excellent' | 'Strong' | 'Moderate' | 'Needs Work' | 'Poor';
+  gradeColor: 'emerald' | 'cyan' | 'amber' | 'orange' | 'rose';
+  isParseable: boolean;
+  breakdown: {
+    contactInfo: AtsRubricCategory;
+    essentialSections: AtsRubricCategory;
+    keywordMatch: AtsRubricCategory;
+    actionVerbsImpact: AtsRubricCategory;
+    formattingReadability: AtsRubricCategory;
+    atsParseability: AtsRubricCategory;
+  };
+  feedback: {
+    summary: string;
+    strengths: string[];
+    improvements: string[];
+    recommendation: string;
+  };
+}

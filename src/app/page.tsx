@@ -12,10 +12,11 @@ import SkillRulesView from '../components/SkillRulesView';
 import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
+import AtsResumeCheckView from '../components/AtsResumeCheckView';
 import { CandidateResult } from '../types';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -331,6 +332,9 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* TAB: ATS Resume Check (100-Point Rubric) */}
+          {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} />}
 
           {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
           {activeTab === 'dashboard' && (

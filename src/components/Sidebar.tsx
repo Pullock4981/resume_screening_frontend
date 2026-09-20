@@ -12,12 +12,13 @@ import {
   Database,
   ChevronRight,
   ShieldCheck,
-  History
+  History,
+  FileCheck
 } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide';
-  setActiveTab: (tab: 'screening' | 'dashboard' | 'history' | 'dictionary' | 'guide') => void;
+  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide';
+  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide') => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
@@ -39,6 +40,12 @@ export default function Sidebar({
       id: 'screening' as const,
       label: 'New Screening',
       icon: PlayCircle,
+      badge: null
+    },
+    {
+      id: 'atsCheck' as const,
+      label: 'ATS Resume Check',
+      icon: FileCheck,
       badge: null
     },
     {
