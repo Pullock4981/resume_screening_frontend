@@ -100,11 +100,11 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
               } else if (parsed.status === 'completed' && parsed.data) {
                 finalData = parsed.data;
               } else if (parsed.status === 'error') {
-                throw new Error(parsed.error || 'Evaluation failed.');
+                setErrorMessage(parsed.error || 'Evaluation failed.');
+                setIsLoading(false);
+                return;
               }
-            } catch (jsonErr: any) {
-              if (jsonErr.message && jsonErr.message.includes('Evaluation failed')) throw jsonErr;
-            }
+            } catch (jsonErr) {}
           }
         }
 
@@ -115,11 +115,11 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
             if (parsed.status === 'completed' && parsed.data) {
               finalData = parsed.data;
             } else if (parsed.status === 'error') {
-              throw new Error(parsed.error || 'Evaluation failed.');
+              setErrorMessage(parsed.error || 'Evaluation failed.');
+              setIsLoading(false);
+              return;
             }
-          } catch (jsonErr: any) {
-            if (jsonErr.message && jsonErr.message.includes('Evaluation failed')) throw jsonErr;
-          }
+          } catch (jsonErr) {}
         }
       }
 
@@ -127,7 +127,7 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         setResults(finalData.results);
       } else {
         setResults(prev => {
-          if (prev.length === 0) {
+          if (prev.length === 0 && !errorMessage) {
             setErrorMessage('No candidate resume results could be evaluated from the provided Google Sheet or Link.');
           }
           return prev;
