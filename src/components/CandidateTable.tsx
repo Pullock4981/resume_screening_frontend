@@ -43,9 +43,9 @@ export default function CandidateTable({
         : activeFilterCategory === 'CriticalMissing'
         ? c.criticalFlag
         : activeFilterCategory === 'Shortlist'
-        ? (c.finalScore >= 85 || c.category.includes('Good to Go') || c.category === 'Shortlist')
+        ? (c.finalScore >= 80 || c.category.includes('Good to Go') || c.category === 'Shortlist')
         : activeFilterCategory === 'Waiting List'
-        ? ((c.finalScore >= 70 && c.finalScore < 85) || c.category.includes('Waiting List'))
+        ? ((c.finalScore >= 70 && c.finalScore < 80) || c.category.includes('Waiting List'))
         : activeFilterCategory === 'Reject'
         ? (c.finalScore < 70 || c.category.includes('Reject') || c.category.includes('Match') || c.category.includes('Fit'))
         : c.category === activeFilterCategory;
@@ -212,12 +212,12 @@ export default function CandidateTable({
                   <td className="py-3.5 px-4">
                     {(c.category.includes('Good to Go') || c.category === 'Shortlist') && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <CheckCircle2 className="w-3 h-3" /> Good to Go (85%+)
+                        <CheckCircle2 className="w-3 h-3" /> Good to Go (80%+)
                       </span>
                     )}
                     {c.category.includes('Waiting List') && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                        <Clock className="w-3 h-3" /> Waiting List (70-84%)
+                        <Clock className="w-3 h-3" /> Waiting List (70-79%)
                       </span>
                     )}
                     {c.category.includes('Partial Match') && (

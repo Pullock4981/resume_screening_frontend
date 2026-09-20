@@ -22,11 +22,11 @@ export default function SummaryCards({
   const total = candidates.length;
 
   const shortlisted = candidates.filter(
-    c => c.finalScore >= 85 || c.category.includes('Good to Go') || c.category === 'Shortlist'
+    c => c.finalScore >= 80 || c.category.includes('Good to Go') || c.category === 'Shortlist'
   ).length;
 
   const waitingList = candidates.filter(
-    c => (c.finalScore >= 70 && c.finalScore < 85) || c.category.includes('Waiting List')
+    c => (c.finalScore >= 70 && c.finalScore < 80) || c.category.includes('Waiting List')
   ).length;
 
   const rejected = candidates.filter(
@@ -76,7 +76,7 @@ export default function SummaryCards({
           <CheckCircle2 className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Shortlisted (≥85%)</p>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Shortlisted (≥80%)</p>
           <p className="text-xl font-bold font-mono text-emerald-500">{shortlisted}</p>
         </div>
       </button>
@@ -97,7 +97,7 @@ export default function SummaryCards({
           <Clock className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Waiting List (70-84%)</p>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Waiting List (70-79%)</p>
           <p className="text-xl font-bold font-mono text-amber-500">{waitingList}</p>
         </div>
       </button>
