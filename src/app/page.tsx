@@ -19,7 +19,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CandidateResult, AtsHistoryRecord } from '../types';
 
 function MainAppContent() {
-  const { isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
@@ -249,6 +249,21 @@ function MainAppContent() {
 
         const updatedHistory = [newRecord, ...historyRecords];
         saveHistoryToStorage(updatedHistory);
+
+        // Log activity to Google Sheet Login_Logs tab
+        if (token) {
+          fetch(`${BACKEND_URL}/api/activity/log`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              action: 'SCREENING_BATCH',
+              details: `Screening Batch: Executed screening for ${resultsList.length} candidate(s) (Operation: '${formData.operationName || 'Batch'}')`
+            })
+          }).catch(err => console.error('Activity log error:', err));
+        }
       } else {
         setIsFinished(true);
         setIsLoading(false);

@@ -30,6 +30,8 @@ interface HistoryViewProps {
   isSyncing?: boolean;
 }
 
+import { useAuth } from '../context/AuthContext';
+
 export default function HistoryView({
   theme,
   historyRecords,
@@ -43,7 +45,9 @@ export default function HistoryView({
   isSyncing = false
 }: HistoryViewProps) {
   const isDark = theme === 'dark';
-  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck'>('screening');
+  const { token } = useAuth();
+
+  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'activityLogs'>('screening');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -51,6 +55,36 @@ export default function HistoryView({
   const [localAtsRecords, setLocalAtsRecords] = useState<AtsHistoryRecord[]>(atsHistoryRecords);
   const [selectedAtsRecord, setSelectedAtsRecord] = useState<AtsHistoryRecord | null>(null);
   const [selectedCandidateRubric, setSelectedCandidateRubric] = useState<AtsRubricResult | null>(null);
+
+  // Activity Audit Logs from Master Sheet Login_Logs
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
+
+  const getBackendUrl = () => {
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://localhost:5000';
+    }
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  };
+
+  const BACKEND_URL = getBackendUrl();
+
+  const fetchActivityLogs = async () => {
+    setIsLogsLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/activity/logs`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = await res.json();
+      if (res.ok && data.logs) {
+        setActivityLogs(data.logs);
+      }
+    } catch (e) {
+      console.error('Failed to fetch activity logs:', e);
+    } finally {
+      setIsLogsLoading(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -63,7 +97,8 @@ export default function HistoryView({
     } catch (e) {
       setLocalAtsRecords(atsHistoryRecords);
     }
-  }, [atsHistoryRecords]);
+    fetchActivityLogs();
+  }, [atsHistoryRecords, token]);
 
   // Sort screening history newest first
   const sortedRecords = [...historyRecords].sort((a, b) => {
@@ -85,6 +120,12 @@ export default function HistoryView({
     r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredActivityLogs = activityLogs.filter(l =>
+    (l.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (l.details || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (l.loginTime || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleCopyUrl = (id: string, url: string, e: React.MouseEvent) => {
@@ -133,27 +174,27 @@ export default function HistoryView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight flex items-center gap-2.5">
-            <History className="w-6 h-6 text-indigo-500" />
-            Evaluation History ({activeSubTab === 'screening' ? sortedRecords.length : sortedAtsRecords.length})
+            <History className="w-6 h-6 text-indigo-400" />
+            Screening & Activity History
           </h2>
           <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            List of all past candidate evaluation runs (Auto-synchronized with Central Google Sheet).
+            View past screening batch operations, ATS resume rubric evaluation history, and full user activity logs.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {onSyncHistory && activeSubTab === 'screening' && (
+        <div className="flex items-center gap-2">
+          {onSyncHistory && (
             <button
-              onClick={onSyncHistory}
+              onClick={() => { onSyncHistory(); fetchActivityLogs(); }}
               disabled={isSyncing}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition ${
                 isDark
                   ? 'bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border-indigo-500/30'
                   : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200'
               }`}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync with Google Sheet'}</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing || isLogsLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              <span>{isSyncing || isLogsLoading ? 'Syncing...' : 'Sync with Google Sheet'}</span>
             </button>
           )}
 
@@ -186,13 +227,15 @@ export default function HistoryView({
       </div>
 
       {/* Sub-tab Navigation Switcher */}
-      <div className="flex border-b border-slate-800 gap-6">
+      <div className={`flex border-b gap-6 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
         <button
           onClick={() => setActiveSubTab('screening')}
           className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
             activeSubTab === 'screening'
-              ? 'border-indigo-500 text-indigo-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-500 text-indigo-500'
+              : isDark
+              ? 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           <History className="w-4 h-4" />
@@ -203,31 +246,51 @@ export default function HistoryView({
           onClick={() => setActiveSubTab('atsCheck')}
           className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
             activeSubTab === 'atsCheck'
-              ? 'border-indigo-500 text-indigo-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-500 text-indigo-500'
+              : isDark
+              ? 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
-          <FileCheck className="w-4 h-4 text-cyan-400" />
+          <FileCheck className="w-4 h-4 text-cyan-500" />
           <span>ATS Resume Check History ({sortedAtsRecords.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('activityLogs')}
+          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+            activeSubTab === 'activityLogs'
+              ? 'border-indigo-500 text-indigo-500'
+              : isDark
+              ? 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Clock className="w-4 h-4 text-purple-500" />
+          <span>User Activity Audit Logs ({activityLogs.length})</span>
         </button>
       </div>
 
       {/* Search Filter */}
-      {((activeSubTab === 'screening' && sortedRecords.length > 0) || (activeSubTab === 'atsCheck' && sortedAtsRecords.length > 0)) && (
-        <div className="relative">
-          <input
-            type="text"
-            placeholder={activeSubTab === 'screening' ? "Search screening history..." : "Search ATS check history..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full border rounded-xl pl-4 pr-10 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isDark
-                ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500'
-                : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-            }`}
-          />
-        </div>
-      )}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={
+            activeSubTab === 'screening'
+              ? "Search screening history..."
+              : activeSubTab === 'atsCheck'
+              ? "Search ATS check history..."
+              : "Search activity logs by email, date, or action..."
+          }
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className={`w-full border rounded-xl pl-4 pr-10 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            isDark
+              ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500'
+              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+          }`}
+        />
+      </div>
 
       {/* SUB-TAB 1: Job Screening History */}
       {activeSubTab === 'screening' && (
@@ -459,6 +522,83 @@ export default function HistoryView({
             ))}
           </div>
         )
+      )}
+
+      {/* SUB-TAB 3: User Activity Audit Trail Logs */}
+      {activeSubTab === 'activityLogs' && (
+        <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+          <div className="p-4 border-b border-slate-800/60 flex items-center justify-between text-xs">
+            <span className="font-bold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-purple-400" />
+              Master Google Sheet User Activity & Audit Logs ({filteredActivityLogs.length})
+            </span>
+            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Tab: Login_Logs (Central Central Database)
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <th className="p-3.5">User Email</th>
+                  <th className="p-3.5">Role</th>
+                  <th className="p-3.5">Activity Timestamp</th>
+                  <th className="p-3.5">Audit Details / Performed Action</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                {filteredActivityLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className={`p-8 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      No user activity audit logs recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredActivityLogs.map((log, idx) => (
+                    <tr key={log.id || idx} className={`transition ${isDark ? 'hover:bg-purple-500/5' : 'hover:bg-purple-50/60'}`}>
+                      <td className="p-3.5 font-bold font-mono text-indigo-600 dark:text-cyan-400">
+                        {log.email}
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                          log.role === 'admin'
+                            ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300'
+                            : isDark
+                            ? 'bg-slate-800 text-slate-300 border-slate-700'
+                            : 'bg-slate-200 text-slate-800 border-slate-300'
+                        }`}>
+                          {log.role}
+                        </span>
+                      </td>
+                      <td className={`p-3.5 font-mono ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
+                        {log.loginTime}
+                      </td>
+                      <td className={`p-3.5 ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
+                        <span className="flex items-center gap-1.5">
+                          {log.details.includes('ATS') ? (
+                            <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 text-[10px] font-bold">
+                              ATS Check
+                            </span>
+                          ) : log.details.includes('Screening') ? (
+                            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                              Screening Batch
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                              Login Session
+                            </span>
+                          )}
+                          <span>{log.details}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Selected ATS Record Modal Viewer */}

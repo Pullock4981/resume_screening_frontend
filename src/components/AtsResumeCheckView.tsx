@@ -31,8 +31,11 @@ interface AtsResumeCheckViewProps {
 
 const DEFAULT_MASTER_SHEET = 'https://docs.google.com/spreadsheets/d/1O84kcu_A4V4Chsb6TPQEwGNxhuqu1Qml431I7yEQu3I/edit?gid=0#gid=0';
 
+import { useAuth } from '../context/AuthContext';
+
 export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord }: AtsResumeCheckViewProps) {
   const isDark = theme === 'dark';
+  const { token } = useAuth();
 
   const [inputUrl, setInputUrl] = useState('');
   const masterSheetUrl = DEFAULT_MASTER_SHEET;
@@ -51,6 +54,8 @@ export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord
     }
     return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
   };
+
+  const BACKEND_URL = getBackendUrl();
 
   const saveAtsRecord = (resList: AtsRubricResult[]) => {
     if (!resList || resList.length === 0) return;
@@ -77,6 +82,21 @@ export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord
       localStorage.setItem('ats_check_history', JSON.stringify(updated));
       if (onSaveHistoryRecord) {
         onSaveHistoryRecord(record);
+      }
+
+      // Log activity event to Central Google Sheet Login_Logs tab
+      if (token) {
+        fetch(`${BACKEND_URL}/api/activity/log`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'ATS_CHECK',
+            details: `ATS Resume Check: Evaluated ${resList.length} candidate resume(s) for '${opTitle}'`
+          })
+        }).catch(err => console.error('Activity log error:', err));
       }
     } catch (e) {
       console.error('Failed to save ATS history record:', e);
