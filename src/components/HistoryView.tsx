@@ -71,16 +71,22 @@ export default function HistoryView({
 
   const fetchActivityLogs = async () => {
     setIsLogsLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
       const res = await fetch(`${BACKEND_URL}/api/activity/logs`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       const data = await res.json();
       if (res.ok && data.logs) {
         setActivityLogs(data.logs);
       }
-    } catch (e) {
-      console.error('Failed to fetch activity logs:', e);
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      console.warn('Failed to fetch activity logs:', e.message || e);
     } finally {
       setIsLogsLoading(false);
     }

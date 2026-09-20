@@ -83,16 +83,23 @@ function MainAppContent() {
 
   const syncHistoryWithGoogleSheets = async () => {
     setIsSyncing(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
-      const res = await fetch(`${BACKEND_URL}/api/history`);
+      const res = await fetch(`${BACKEND_URL}/api/history`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         if (data.history && Array.isArray(data.history)) {
           saveHistoryToStorage(data.history);
         }
       }
-    } catch (e) {
-      console.error('Failed to sync history from Google Sheets:', e);
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      console.warn('Google Sheets history sync skipped/timed out:', e.message || e);
     } finally {
       setIsSyncing(false);
     }
