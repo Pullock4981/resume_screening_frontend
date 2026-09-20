@@ -30,7 +30,14 @@ export default function Home() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('latest');
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  const getBackendUrl = () => {
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://localhost:5000';
+    }
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  };
+
+  const BACKEND_URL = getBackendUrl();
 
   // Load history from localStorage and sync with Google Sheets on initial mount
   useEffect(() => {

@@ -33,7 +33,12 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
   const [selectedResult, setSelectedResult] = useState<AtsRubricResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  const getBackendUrl = () => {
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://localhost:5000';
+    }
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  };
 
   const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,15 +56,17 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
       ? { sheetUrl: inputUrl.trim() }
       : { resumeUrl: inputUrl.trim() };
 
+    const backendUrl = getBackendUrl();
+
     try {
-      const response = await fetch(`${BACKEND_URL}/api/ats-check`, {
+      const response = await fetch(`${backendUrl}/api/ats-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to contact backend ATS check endpoint.');
+        throw new Error(`Failed to contact backend ATS check endpoint (${response.status}).`);
       }
 
       const reader = response.body?.getReader();
@@ -80,7 +87,17 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
             if (!line.trim()) continue;
             try {
               const parsed = JSON.parse(line.trim());
-              if (parsed.status === 'completed' && parsed.data) {
+              if (parsed.status === 'processing' && parsed.result) {
+                setResults(prev => {
+                  const idx = prev.findIndex(r => r.name === parsed.result.name && r.email === parsed.result.email);
+                  if (idx !== -1) {
+                    const copy = [...prev];
+                    copy[idx] = parsed.result;
+                    return copy;
+                  }
+                  return [...prev, parsed.result];
+                });
+              } else if (parsed.status === 'completed' && parsed.data) {
                 finalData = parsed.data;
               } else if (parsed.status === 'error') {
                 throw new Error(parsed.error || 'Evaluation failed.');
@@ -90,12 +107,29 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
             }
           }
         }
+
+        // Process remaining buffer chunk after stream ends
+        if (buffer && buffer.trim()) {
+          try {
+            const parsed = JSON.parse(buffer.trim());
+            if (parsed.status === 'completed' && parsed.data) {
+              finalData = parsed.data;
+            } else if (parsed.status === 'error') {
+              throw new Error(parsed.error || 'Evaluation failed.');
+            }
+          } catch (jsonErr: any) {
+            if (jsonErr.message && jsonErr.message.includes('Evaluation failed')) throw jsonErr;
+          }
+        }
       }
 
-      if (finalData && finalData.results) {
+      if (finalData && finalData.results && finalData.results.length > 0) {
         setResults(finalData.results);
       } else {
-        throw new Error('No evaluation output returned.');
+        setResults(prev => {
+          if (prev.length > 0) return prev;
+          throw new Error('No evaluation output returned.');
+        });
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error occurred during ATS Resume evaluation.');
