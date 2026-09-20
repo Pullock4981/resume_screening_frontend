@@ -28,7 +28,6 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
   const isDark = theme === 'dark';
 
   const [inputUrl, setInputUrl] = useState('');
-  const [jdText, setJdText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<AtsRubricResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<AtsRubricResult | null>(null);
@@ -49,8 +48,8 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
 
     const isSheet = inputUrl.includes('docs.google.com/spreadsheets');
     const payload = isSheet
-      ? { sheetUrl: inputUrl.trim(), jdText: jdText.trim() }
-      : { resumeUrl: inputUrl.trim(), jdText: jdText.trim() };
+      ? { sheetUrl: inputUrl.trim() }
+      : { resumeUrl: inputUrl.trim() };
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/ats-check`, {
@@ -149,7 +148,7 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         </div>
         <div className="space-y-0.5 p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
           <span className="font-bold text-purple-400">Keyword Match</span>
-          <p className="text-[10px] text-slate-400">% JD Keywords in resume</p>
+          <p className="text-[10px] text-slate-400">Industry Tech Keywords</p>
           <span className="text-xs font-bold text-purple-400">25 Pts</span>
         </div>
         <div className="space-y-0.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -174,41 +173,21 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100 shadow-2xl' : 'bg-white border-slate-200 text-slate-900 shadow-md'
       }`}>
         <form onSubmit={handleEvaluate} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Input URL */}
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
-                <Table className="w-4 h-4 text-cyan-400" />
-                Google Sheet URL or Direct Resume Drive Link <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Paste Google Sheet URL (with applicant resumes) OR direct PDF/Drive link"
-                value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
-                  isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
-
-            {/* Optional JD Text */}
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-400" />
-                Job Description Text <span className="text-slate-400 font-normal">(Optional for Keyword Scaling)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Paste Job Description text to evaluate Keyword Match % (Optional)"
-                value={jdText}
-                onChange={(e) => setJdText(e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
-                  isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
+              <Table className="w-4 h-4 text-cyan-400" />
+              Google Sheet URL or Direct Resume Drive Link <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Paste Candidate Google Sheet URL (with applicant resumes) OR direct PDF/Drive link"
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              className={`w-full border rounded-xl px-4 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
+              }`}
+            />
           </div>
 
           {/* Submit Button */}
