@@ -10,15 +10,17 @@ import {
   Sun,
   Moon,
   Database,
-  ChevronRight,
-  ShieldCheck,
   History,
-  FileCheck
+  FileCheck,
+  ShieldAlert,
+  LogOut,
+  User
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide';
-  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide') => void;
+  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin';
+  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin') => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
@@ -34,6 +36,7 @@ export default function Sidebar({
   historyCount = 0
 }: SidebarProps) {
   const isDark = theme === 'dark';
+  const { user, isAdmin, logout } = useAuth();
 
   const menuItems = [
     {
@@ -60,6 +63,12 @@ export default function Sidebar({
       icon: History,
       badge: historyCount > 0 ? historyCount : null
     },
+    ...(isAdmin ? [{
+      id: 'admin' as const,
+      label: 'Admin Control Panel',
+      icon: ShieldAlert,
+      badge: null
+    }] : []),
     {
       id: 'dictionary' as const,
       label: 'Skill Rules & ATS',
@@ -144,18 +153,32 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Sidebar Footer & Theme Toggle */}
+      {/* Sidebar Footer & User Auth Box */}
       <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
-        {/* System Info Box */}
-        <div className={`p-3 rounded-xl border text-[11px] space-y-1 ${
-          isDark ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600 shadow-2xs'
-        }`}>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-500">
-            <Database className="w-3.5 h-3.5" />
-            <span>Google Sheet Sync</span>
+        {/* User Account Box */}
+        {user && (
+          <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+            isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
+          }`}>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="overflow-hidden">
+                <div className="font-bold truncate text-[11px]">{user.name}</div>
+                <div className="text-[9px] uppercase font-mono text-indigo-400 font-semibold">{user.role}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              title="Log out (24h session)"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
-          <p className="text-[10px] leading-tight">All candidate scores write back directly into your central Google Sheet.</p>
-        </div>
+        )}
 
         {/* Light / Dark Mode Toggle */}
         <button
@@ -180,3 +203,4 @@ export default function Sidebar({
     </aside>
   );
 }
+

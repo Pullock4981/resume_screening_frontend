@@ -92,3 +92,20 @@ export interface AtsHistoryRecord {
   results: AtsRubricResult[];
 }
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  status: 'active' | 'banned';
+  createdAt?: string;
+}
+
+export interface LoginAuditLog {
+  id: string;
+  email: string;
+  role: string;
+  loginTime: string;
+  details: string;
+}
+

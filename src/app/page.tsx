@@ -13,10 +13,14 @@ import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
+import AdminUserManagementView from '../components/AdminUserManagementView';
+import AuthView from '../components/AuthView';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CandidateResult, AtsHistoryRecord } from '../types';
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide'>('screening');
+function MainAppContent() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -276,6 +280,21 @@ export default function Home() {
 
   const isDark = theme === 'dark';
 
+  if (authLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center font-sans ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold">Verifying 24-Hour Session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthView theme={theme} />;
+  }
+
   return (
     <div className={`min-h-screen flex font-sans transition-colors duration-200 ${
       isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
@@ -388,6 +407,9 @@ export default function Home() {
             />
           )}
 
+          {/* TAB: Admin User Management Panel */}
+          {activeTab === 'admin' && <AdminUserManagementView theme={theme} />}
+
           {/* TAB 4: Skill Rules & ATS Dataset */}
           {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}
 
@@ -409,5 +431,13 @@ export default function Home() {
         theme={theme}
       />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <AuthProvider>
+      <MainAppContent />
+    </AuthProvider>
   );
 }

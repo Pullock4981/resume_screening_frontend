@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, DatabaseZap, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, DatabaseZap, Sun, Moon, LogOut, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   theme: 'dark' | 'light';
@@ -10,6 +11,7 @@ interface NavbarProps {
 
 export default function Navbar({ theme, setTheme }: NavbarProps) {
   const isDark = theme === 'dark';
+  const { user, logout } = useAuth();
 
   return (
     <header className={`w-full border-b backdrop-blur-md sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between transition-colors duration-200 ${
@@ -30,6 +32,27 @@ export default function Navbar({ theme, setTheme }: NavbarProps) {
           <DatabaseZap className="w-4 h-4 text-emerald-500" />
           <span>Central Storage: <strong>Google Sheet Sync</strong></span>
         </div>
+
+        {user && (
+          <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border ${
+            isDark ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-200 text-slate-800'
+          }`}>
+            <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px]">
+              {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <div className="hidden sm:block text-left">
+              <span className="font-bold text-xs block leading-tight">{user.name}</span>
+              <span className="text-[9px] uppercase font-mono text-purple-400 font-semibold">{user.role}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1 rounded hover:text-rose-400 transition ml-1"
+              title="Logout (24h session)"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Theme Toggle Button */}
         <button
