@@ -13,7 +13,7 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
   const isDark = theme === 'dark';
   const { token } = useAuth();
 
-  const [activeSubTab, setActiveSubTab] = useState<'users' | 'logs'>('users');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'users' | 'logs'>('overview');
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [logs, setLogs] = useState<LoginAuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,6 +177,9 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
     l.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const bannedCount = users.filter(u => u.status === 'banned').length;
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
@@ -184,10 +187,10 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight flex items-center gap-2.5">
             <ShieldAlert className="w-6 h-6 text-purple-400" />
-            Admin Control Panel — User Management
+            Admin Dashboard & Control Panel
           </h2>
           <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Manage registered accounts, grant Admin privileges, ban users, and review 24h login audit logs.
+            Full system overview: User Management, Role Promotion, Account Ban Control & Login Audit Logs.
           </p>
         </div>
 
@@ -206,6 +209,18 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
       {/* Sub-tab Navigation */}
       <div className="flex border-b border-slate-800 gap-6">
         <button
+          onClick={() => setActiveSubTab('overview')}
+          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+            activeSubTab === 'overview'
+              ? 'border-purple-500 text-purple-400'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-purple-400" />
+          <span>Admin Dashboard Overview</span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('users')}
           className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
             activeSubTab === 'users'
@@ -214,7 +229,7 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>User Accounts ({users.length})</span>
+          <span>User Management ({users.length})</span>
         </button>
 
         <button
@@ -226,7 +241,7 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
           }`}
         >
           <Clock className="w-4 h-4 text-cyan-400" />
-          <span>Login Audit Logs ({logs.length})</span>
+          <span>History & Login Audit Logs ({logs.length})</span>
         </button>
       </div>
 
@@ -245,19 +260,194 @@ export default function AdminUserManagementView({ theme = 'dark' }: AdminUserMan
         </div>
       )}
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
-        <input
-          type="text"
-          placeholder={activeSubTab === 'users' ? "Search users by name, email, role..." : "Search logs by email, date..."}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            isDark ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'
-          }`}
-        />
-      </div>
+      {/* Search Input (Shown for Users & Logs) */}
+      {activeSubTab !== 'overview' && (
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
+          <input
+            type="text"
+            placeholder={activeSubTab === 'users' ? "Search users by name, email, role..." : "Search logs by email, date..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              isDark ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'
+            }`}
+          />
+        </div>
+      )}
+
+      {/* SUB-TAB 0: Admin Dashboard Overview */}
+      {activeSubTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Users */}
+            <div className={`p-5 rounded-2xl border transition shadow-sm ${isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Users</span>
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <Users className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-3xl font-extrabold tracking-tight">{users.length}</span>
+                <p className="text-[11px] text-emerald-400 font-semibold mt-1">
+                  {users.filter(u => u.status === 'active').length} Active Accounts
+                </p>
+              </div>
+            </div>
+
+            {/* Active Admins */}
+            <div className={`p-5 rounded-2xl border transition shadow-sm ${isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">System Admins</span>
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-3xl font-extrabold tracking-tight">{adminCount}</span>
+                <p className="text-[11px] text-purple-400 font-semibold mt-1">
+                  Full Administrative Privileges
+                </p>
+              </div>
+            </div>
+
+            {/* Banned Accounts */}
+            <div className={`p-5 rounded-2xl border transition shadow-sm ${isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Banned Accounts</span>
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
+                  <UserX className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-3xl font-extrabold tracking-tight text-rose-400">{bannedCount}</span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {users.length ? Math.round((bannedCount / users.length) * 100) : 0}% of user base
+                </p>
+              </div>
+            </div>
+
+            {/* Total Login Audits */}
+            <div className={`p-5 rounded-2xl border transition shadow-sm ${isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Login Events</span>
+                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-3xl font-extrabold tracking-tight text-cyan-400">{logs.length}</span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Logged in Master Google Sheet
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Banner */}
+          <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r ${
+            isDark ? 'from-indigo-950/60 via-purple-950/40 to-slate-900 border-indigo-500/30' : 'from-indigo-50 via-purple-50 to-white border-indigo-200 shadow-sm'
+          }`}>
+            <div>
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span>🛡️ Quick Administrative Control Center</span>
+              </h3>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Manage user permissions, ban suspicious accounts, or inspect login timestamps.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveSubTab('users')}
+                className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+              >
+                <Users className="w-4 h-4" /> Manage Users
+              </button>
+              <button
+                onClick={() => setActiveSubTab('logs')}
+                className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+              >
+                <Clock className="w-4 h-4" /> View Audit Logs
+              </button>
+            </div>
+          </div>
+
+          {/* System Health & Recent Activity Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* System Status */}
+            <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                System Integration Status
+              </h3>
+
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                  <span className="text-slate-400 font-medium">Master Google Sheet Sync</span>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    Connected & Active
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                  <span className="text-slate-400 font-medium">Authentication Session Token</span>
+                  <span className="font-mono text-purple-400 font-bold">24-Hour Expiration JWT</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                  <span className="text-slate-400 font-medium">Password Hashing Security</span>
+                  <span className="font-mono text-cyan-400 font-bold">Bcrypt 10 Rounds</span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                  <span className="text-slate-400 font-medium">Database Sheets Tabs</span>
+                  <span className="font-mono text-indigo-400 font-bold">Users & Login_Logs</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Login Audit Trail Preview */}
+            <div className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  Recent User Logins
+                </h3>
+                <button
+                  onClick={() => setActiveSubTab('logs')}
+                  className="text-xs text-indigo-400 hover:underline font-semibold"
+                >
+                  View All ({logs.length}) →
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {logs.slice(0, 4).length === 0 ? (
+                  <p className="text-xs text-slate-400 p-4 text-center">No recent login events recorded.</p>
+                ) : (
+                  logs.slice(0, 4).map((l, idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-slate-950/40 border border-slate-800/60 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-cyan-400 font-mono">{l.email}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{l.details}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-800 text-slate-300">
+                          {l.role}
+                        </span>
+                        <div className="text-[10px] text-slate-500 font-mono mt-1">{l.loginTime}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SUB-TAB 1: Registered Users Table */}
       {activeSubTab === 'users' && (
