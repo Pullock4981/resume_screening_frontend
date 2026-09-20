@@ -14,13 +14,15 @@ import {
   FileCheck,
   ShieldAlert,
   LogOut,
-  User
+  User,
+  Users,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin';
-  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin') => void;
+  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs';
+  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs') => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
@@ -63,12 +65,26 @@ export default function Sidebar({
       icon: History,
       badge: historyCount > 0 ? historyCount : null
     },
-    ...(isAdmin ? [{
-      id: 'admin' as const,
-      label: 'Admin Control Panel',
-      icon: ShieldAlert,
-      badge: null
-    }] : []),
+    ...(isAdmin ? [
+      {
+        id: 'adminDashboard' as const,
+        label: 'Admin Dashboard',
+        icon: ShieldAlert,
+        badge: 'Admin'
+      },
+      {
+        id: 'userManagement' as const,
+        label: 'User Management',
+        icon: Users,
+        badge: null
+      },
+      {
+        id: 'adminLogs' as const,
+        label: 'History Management',
+        icon: Clock,
+        badge: null
+      }
+    ] : []),
     {
       id: 'dictionary' as const,
       label: 'Skill Rules & ATS',

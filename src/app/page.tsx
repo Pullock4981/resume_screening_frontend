@@ -20,7 +20,7 @@ import { CandidateResult, AtsHistoryRecord } from '../types';
 
 function MainAppContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -407,8 +407,10 @@ function MainAppContent() {
             />
           )}
 
-          {/* TAB: Admin User Management Panel */}
-          {activeTab === 'admin' && <AdminUserManagementView theme={theme} />}
+          {/* TAB: Admin User Management Panel & Dashboard */}
+          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" />}
+          {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" />}
+          {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" />}
 
           {/* TAB 4: Skill Rules & ATS Dataset */}
           {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}

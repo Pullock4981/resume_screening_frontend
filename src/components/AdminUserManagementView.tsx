@@ -7,13 +7,18 @@ import { ShieldAlert, Users, UserCheck, UserX, ShieldCheck, Edit, Clock, Search,
 
 interface AdminUserManagementViewProps {
   theme?: 'dark' | 'light';
+  initialSubTab?: 'overview' | 'users' | 'logs';
 }
 
-export default function AdminUserManagementView({ theme = 'dark' }: AdminUserManagementViewProps) {
+export default function AdminUserManagementView({ theme = 'dark', initialSubTab = 'overview' }: AdminUserManagementViewProps) {
   const isDark = theme === 'dark';
   const { token } = useAuth();
 
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'users' | 'logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'users' | 'logs'>(initialSubTab);
+
+  useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [logs, setLogs] = useState<LoginAuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
