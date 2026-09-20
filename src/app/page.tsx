@@ -248,8 +248,8 @@ function MainAppContent() {
           dateFormatted: now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
           studentSheetUrl: formData.sheetUrl,
           totalCandidates: resultsList.length,
-          goodToGoCount: resultsList.filter(c => c.finalScore >= 90).length,
-          waitingListCount: resultsList.filter(c => c.finalScore >= 70 && c.finalScore < 90).length,
+          goodToGoCount: resultsList.filter(c => c.finalScore >= 85).length,
+          waitingListCount: resultsList.filter(c => c.finalScore >= 70 && c.finalScore < 85).length,
           notMatchingCount: resultsList.filter(c => c.finalScore < 70).length,
           candidates: resultsList
         };
