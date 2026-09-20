@@ -19,6 +19,7 @@ import {
   Info
 } from 'lucide-react';
 import { AtsRubricResult } from '../types';
+import ProgressBar from './ProgressBar';
 
 interface AtsResumeCheckViewProps {
   theme?: 'dark' | 'light';
@@ -29,6 +30,8 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
 
   const [inputUrl, setInputUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [progress, setProgress] = useState({ completed: 0, total: 0, currentCandidate: '' });
   const [results, setResults] = useState<AtsRubricResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<AtsRubricResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -48,8 +51,10 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
     }
 
     setIsLoading(true);
+    setIsFinished(false);
     setErrorMessage(null);
     setResults([]);
+    setProgress({ completed: 0, total: 0, currentCandidate: '' });
 
     const isSheet = inputUrl.includes('docs.google.com/spreadsheets');
     const payload = isSheet
@@ -87,18 +92,28 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
             if (!line.trim()) continue;
             try {
               const parsed = JSON.parse(line.trim());
-              if (parsed.status === 'processing' && parsed.result) {
-                setResults(prev => {
-                  const idx = prev.findIndex(r => r.name === parsed.result.name && r.email === parsed.result.email);
-                  if (idx !== -1) {
-                    const copy = [...prev];
-                    copy[idx] = parsed.result;
-                    return copy;
-                  }
-                  return [...prev, parsed.result];
+              if (parsed.status === 'started') {
+                setProgress({ completed: 0, total: parsed.total || 0, currentCandidate: '' });
+              } else if (parsed.status === 'processing') {
+                setProgress({
+                  completed: parsed.completed || 0,
+                  total: parsed.total || 0,
+                  currentCandidate: parsed.currentCandidate || ''
                 });
+                if (parsed.result) {
+                  setResults(prev => {
+                    const idx = prev.findIndex(r => r.name === parsed.result.name && r.email === parsed.result.email);
+                    if (idx !== -1) {
+                      const copy = [...prev];
+                      copy[idx] = parsed.result;
+                      return copy;
+                    }
+                    return [...prev, parsed.result];
+                  });
+                }
               } else if (parsed.status === 'completed' && parsed.data) {
                 finalData = parsed.data;
+                setIsFinished(true);
               } else if (parsed.status === 'error') {
                 setErrorMessage(parsed.error || 'Evaluation failed.');
                 setIsLoading(false);
@@ -114,6 +129,7 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
             const parsed = JSON.parse(buffer.trim());
             if (parsed.status === 'completed' && parsed.data) {
               finalData = parsed.data;
+              setIsFinished(true);
             } else if (parsed.status === 'error') {
               setErrorMessage(parsed.error || 'Evaluation failed.');
               setIsLoading(false);
@@ -125,10 +141,15 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
 
       if (finalData && finalData.results && finalData.results.length > 0) {
         setResults(finalData.results);
+        setProgress({ completed: finalData.results.length, total: finalData.results.length, currentCandidate: '' });
+        setIsFinished(true);
       } else {
         setResults(prev => {
           if (prev.length === 0 && !errorMessage) {
             setErrorMessage('No candidate resume results could be evaluated from the provided Google Sheet or Link.');
+          } else if (prev.length > 0) {
+            setProgress({ completed: prev.length, total: prev.length, currentCandidate: '' });
+            setIsFinished(true);
           }
           return prev;
         });
@@ -246,6 +267,17 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
           </button>
         </form>
       </div>
+
+      {/* Real-time Progress Bar */}
+      {(isLoading || isFinished || progress.total > 0) && (
+        <ProgressBar
+          completed={progress.completed}
+          total={progress.total}
+          currentCandidate={progress.currentCandidate}
+          isFinished={isFinished}
+          theme={theme}
+        />
+      )}
 
       {/* Error Message */}
       {errorMessage && (
