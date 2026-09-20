@@ -77,3 +77,18 @@ export interface AtsRubricResult {
     recommendation: string;
   };
 }
+
+export interface AtsHistoryRecord {
+  id: string;
+  operationName: string;
+  timestamp: string;
+  dateFormatted: string;
+  studentSheetUrl: string;
+  totalCandidates: number;
+  excellentCount: number;
+  strongCount: number;
+  moderateCount: number;
+  needsWorkCount: number;
+  results: AtsRubricResult[];
+}
+

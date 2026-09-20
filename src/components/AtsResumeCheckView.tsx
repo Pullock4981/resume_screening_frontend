@@ -18,17 +18,22 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { AtsRubricResult } from '../types';
+import { AtsRubricResult, AtsHistoryRecord } from '../types';
 import ProgressBar from './ProgressBar';
 
 interface AtsResumeCheckViewProps {
   theme?: 'dark' | 'light';
+  onSaveHistoryRecord?: (record: AtsHistoryRecord) => void;
 }
 
-export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckViewProps) {
+const DEFAULT_MASTER_SHEET = 'https://docs.google.com/spreadsheets/d/1O84kcu_A4V4Chsb6TPQEwGNxhuqu1Qml431I7yEQu3I/edit?gid=0#gid=0';
+
+export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord }: AtsResumeCheckViewProps) {
   const isDark = theme === 'dark';
 
   const [inputUrl, setInputUrl] = useState('');
+  const [masterSheetUrl, setMasterSheetUrl] = useState(DEFAULT_MASTER_SHEET);
+  const [operationName, setOperationName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0, currentCandidate: '' });
@@ -41,6 +46,37 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
       return 'http://localhost:5000';
     }
     return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
+  };
+
+  const saveAtsRecord = (resList: AtsRubricResult[]) => {
+    if (!resList || resList.length === 0) return;
+    const now = new Date();
+    const opTitle = operationName.trim() || (inputUrl.includes('docs.google.com') ? 'ATS Check (Google Sheet)' : 'ATS Check (Direct Resume)');
+    const record: AtsHistoryRecord = {
+      id: `ats_${Date.now()}`,
+      operationName: opTitle,
+      timestamp: now.toISOString(),
+      dateFormatted: now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
+      studentSheetUrl: inputUrl.trim(),
+      totalCandidates: resList.length,
+      excellentCount: resList.filter(r => (r.totalScore || 0) >= 85).length,
+      strongCount: resList.filter(r => (r.totalScore || 0) >= 70 && (r.totalScore || 0) < 85).length,
+      moderateCount: resList.filter(r => (r.totalScore || 0) >= 55 && (r.totalScore || 0) < 70).length,
+      needsWorkCount: resList.filter(r => (r.totalScore || 0) < 55).length,
+      results: resList
+    };
+
+    try {
+      const existing = localStorage.getItem('ats_check_history');
+      const list: AtsHistoryRecord[] = existing ? JSON.parse(existing) : [];
+      const updated = [record, ...list];
+      localStorage.setItem('ats_check_history', JSON.stringify(updated));
+      if (onSaveHistoryRecord) {
+        onSaveHistoryRecord(record);
+      }
+    } catch (e) {
+      console.error('Failed to save ATS history record:', e);
+    }
   };
 
   const handleEvaluate = async (e: React.FormEvent) => {
@@ -58,8 +94,8 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
 
     const isSheet = inputUrl.includes('docs.google.com/spreadsheets');
     const payload = isSheet
-      ? { sheetUrl: inputUrl.trim() }
-      : { resumeUrl: inputUrl.trim() };
+      ? { sheetUrl: inputUrl.trim(), masterSheetUrl: masterSheetUrl.trim(), operationName: operationName.trim() }
+      : { resumeUrl: inputUrl.trim(), masterSheetUrl: masterSheetUrl.trim(), operationName: operationName.trim() };
 
     const backendUrl = getBackendUrl();
 
@@ -143,6 +179,7 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         setResults(finalData.results);
         setProgress({ completed: finalData.results.length, total: finalData.results.length, currentCandidate: '' });
         setIsFinished(true);
+        saveAtsRecord(finalData.results);
       } else {
         setResults(prev => {
           if (prev.length === 0 && !errorMessage) {
@@ -150,6 +187,7 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
           } else if (prev.length > 0) {
             setProgress({ completed: prev.length, total: prev.length, currentCandidate: '' });
             setIsFinished(true);
+            saveAtsRecord(prev);
           }
           return prev;
         });
@@ -230,19 +268,53 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         isDark ? 'bg-slate-900/60 border-slate-800 text-slate-100 shadow-2xl' : 'bg-white border-slate-200 text-slate-900 shadow-md'
       }`}>
         <form onSubmit={handleEvaluate} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
+                <Table className="w-4 h-4 text-cyan-400" />
+                Google Sheet URL or Direct Resume Drive Link <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Paste Candidate Google Sheet URL (with applicant resumes) OR direct PDF/Drive link"
+                value={inputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                className={`w-full border rounded-xl px-4 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                  isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                Operation / Job Name (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. ATS Check Software Engineer"
+                value={operationName}
+                onChange={(e) => setOperationName(e.target.value)}
+                className={`w-full border rounded-xl px-4 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                  isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold mb-1.5 flex items-center gap-2">
-              <Table className="w-4 h-4 text-cyan-400" />
-              Google Sheet URL or Direct Resume Drive Link <span className="text-rose-500">*</span>
+              <Table className="w-4 h-4 text-emerald-400" />
+              Master Central Google Sheet URL (Central Storage Sync)
             </label>
             <input
               type="text"
-              required
-              placeholder="Paste Candidate Google Sheet URL (with applicant resumes) OR direct PDF/Drive link"
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-3 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
-                isDark ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
+              placeholder="Master Central Google Sheet URL"
+              value={masterSheetUrl}
+              onChange={(e) => setMasterSheetUrl(e.target.value)}
+              className={`w-full border rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                isDark ? 'bg-slate-950/80 border-slate-800 text-slate-300 placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900'
               }`}
             />
           </div>

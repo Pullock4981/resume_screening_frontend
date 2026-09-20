@@ -13,7 +13,7 @@ import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
-import { CandidateResult } from '../types';
+import { CandidateResult, AtsHistoryRecord } from '../types';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide'>('screening');
@@ -259,6 +259,21 @@ export default function Home() {
     saveHistoryToStorage(updated);
   };
 
+  const [atsHistoryRecords, setAtsHistoryRecords] = useState<AtsHistoryRecord[]>([]);
+
+  useEffect(() => {
+    try {
+      const savedAts = localStorage.getItem('ats_check_history');
+      if (savedAts) {
+        setAtsHistoryRecords(JSON.parse(savedAts));
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSaveAtsRecord = (newRecord: AtsHistoryRecord) => {
+    setAtsHistoryRecords(prev => [newRecord, ...prev]);
+  };
+
   const isDark = theme === 'dark';
 
   return (
@@ -341,7 +356,7 @@ export default function Home() {
           )}
 
           {/* TAB: ATS Resume Check (100-Point Rubric) */}
-          {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} />}
+          {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} onSaveHistoryRecord={handleSaveAtsRecord} />}
 
           {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
           {activeTab === 'dashboard' && (
@@ -364,6 +379,7 @@ export default function Home() {
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
+              atsHistoryRecords={atsHistoryRecords}
               onSelectRecord={handleSelectHistoryRecord}
               onClearHistory={handleClearHistory}
               onDeleteRecord={handleDeleteHistoryRecord}
