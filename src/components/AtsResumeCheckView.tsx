@@ -127,8 +127,10 @@ export default function AtsResumeCheckView({ theme = 'dark' }: AtsResumeCheckVie
         setResults(finalData.results);
       } else {
         setResults(prev => {
-          if (prev.length > 0) return prev;
-          throw new Error('No evaluation output returned.');
+          if (prev.length === 0) {
+            setErrorMessage('No candidate resume results could be evaluated from the provided Google Sheet or Link.');
+          }
+          return prev;
         });
       }
     } catch (err: any) {
