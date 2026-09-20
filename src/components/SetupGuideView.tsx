@@ -18,7 +18,7 @@ export default function SetupGuideView({ theme }: SetupGuideViewProps) {
           Google Sheet & Service Account Setup Guide
         </h2>
         <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          Follow these 3 quick steps to connect your central Google Sheet with the AutoScreener engine.
+          Follow these 3 quick steps to connect your central Google Sheet with the NexScanner engine.
         </p>
       </div>
 

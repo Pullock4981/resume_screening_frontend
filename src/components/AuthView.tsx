@@ -67,7 +67,7 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
             <ShieldCheck className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            AutoScreener AI Engine
+            NexScanner AI Engine
           </h1>
           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {mode === 'login' ? 'Enter credentials for 24-Hour Secure Access' : 'Create an account to start screening candidate resumes'}
