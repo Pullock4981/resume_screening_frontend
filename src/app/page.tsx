@@ -19,9 +19,24 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CandidateResult, AtsHistoryRecord } from '../types';
 
 function MainAppContent() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
+
+  // Ensure Admin starts on Admin Dashboard and User starts on Screening tab
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (isAdmin) {
+        if (!['adminDashboard', 'userManagement', 'adminLogs', 'admin'].includes(activeTab)) {
+          setActiveTab('adminDashboard');
+        }
+      } else {
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin'].includes(activeTab)) {
+          setActiveTab('screening');
+        }
+      }
+    }
+  }, [isAdmin, isAuthenticated]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);

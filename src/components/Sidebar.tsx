@@ -40,7 +40,28 @@ export default function Sidebar({
   const isDark = theme === 'dark';
   const { user, isAdmin, logout } = useAuth();
 
-  const menuItems = [
+  const adminMenuItems = [
+    {
+      id: 'adminDashboard' as const,
+      label: 'Admin Dashboard',
+      icon: ShieldAlert,
+      badge: 'Admin'
+    },
+    {
+      id: 'userManagement' as const,
+      label: 'User Management',
+      icon: Users,
+      badge: null
+    },
+    {
+      id: 'adminLogs' as const,
+      label: 'History Management',
+      icon: Clock,
+      badge: null
+    }
+  ];
+
+  const userMenuItems = [
     {
       id: 'screening' as const,
       label: 'New Screening',
@@ -65,26 +86,6 @@ export default function Sidebar({
       icon: History,
       badge: historyCount > 0 ? historyCount : null
     },
-    ...(isAdmin ? [
-      {
-        id: 'adminDashboard' as const,
-        label: 'Admin Dashboard',
-        icon: ShieldAlert,
-        badge: 'Admin'
-      },
-      {
-        id: 'userManagement' as const,
-        label: 'User Management',
-        icon: Users,
-        badge: null
-      },
-      {
-        id: 'adminLogs' as const,
-        label: 'History Management',
-        icon: Clock,
-        badge: null
-      }
-    ] : []),
     {
       id: 'dictionary' as const,
       label: 'Skill Rules & ATS',
@@ -98,6 +99,8 @@ export default function Sidebar({
       badge: null
     }
   ];
+
+  const menuItems = isAdmin ? adminMenuItems : userMenuItems;
 
   return (
     <aside
@@ -126,7 +129,7 @@ export default function Sidebar({
         {/* Navigation Menu */}
         <div className="p-3 space-y-1">
           <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Main Menu
+            {isAdmin ? 'Admin Control Panel' : 'Main Menu'}
           </p>
 
           {menuItems.map(item => {
