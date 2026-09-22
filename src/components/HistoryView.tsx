@@ -28,6 +28,7 @@ interface HistoryViewProps {
   onDeleteAtsRecord?: (id: string) => void;
   onSyncHistory?: () => void;
   isSyncing?: boolean;
+  defaultSubTab?: 'screening' | 'atsCheck' | 'activityLogs';
 }
 
 import { useAuth } from '../context/AuthContext';
@@ -42,13 +43,20 @@ export default function HistoryView({
   onClearAtsHistory,
   onDeleteAtsRecord,
   onSyncHistory,
-  isSyncing = false
+  isSyncing = false,
+  defaultSubTab
 }: HistoryViewProps) {
   const isDark = theme === 'dark';
   const { token, user, isAdmin } = useAuth();
 
-  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'activityLogs'>('screening');
+  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'activityLogs'>(defaultSubTab || 'screening');
   const [filterByUser, setFilterByUser] = useState<'all' | 'me'>('all');
+
+  useEffect(() => {
+    if (defaultSubTab) {
+      setActiveSubTab(defaultSubTab);
+    }
+  }, [defaultSubTab]);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -139,6 +147,15 @@ export default function HistoryView({
       (l.loginTime || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesUser && matchesQuery;
   });
+
+  const getExecutorEmail = (item: any) => {
+    if (item.userEmail) return item.userEmail;
+    if (!item.operationName && !item.studentSheetUrl) return user?.email || 'System User';
+    const op = (item.operationName || '').toLowerCase();
+    const match = activityLogs.find(l => l.details && op && op.length > 2 && l.details.toLowerCase().includes(op));
+    if (match && match.email) return match.email;
+    return user?.email || 'System User';
+  };
 
   const handleCopyUrl = (id: string, url: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -341,13 +358,18 @@ export default function HistoryView({
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-base font-extrabold group-hover:text-indigo-400 transition">
                         {item.operationName || 'Screening Operation'}
                       </h3>
                       <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-indigo-400" />
                         {item.dateFormatted}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1 ${
+                        isDark ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}>
+                        👤 Executed by: {getExecutorEmail(item)}
                       </span>
                     </div>
 
@@ -458,13 +480,18 @@ export default function HistoryView({
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-base font-extrabold group-hover:text-cyan-400 transition">
                         {item.operationName || 'ATS Resume Check'}
                       </h3>
                       <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-cyan-400" />
                         {item.dateFormatted}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1 ${
+                        isDark ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                      }`}>
+                        👤 Executed by: {getExecutorEmail(item)}
                       </span>
                     </div>
 

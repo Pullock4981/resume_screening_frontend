@@ -21,8 +21,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs';
-  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs') => void;
+  activeTab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory';
+  setActiveTab: (tab: 'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory') => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
@@ -54,9 +54,15 @@ export default function Sidebar({
       badge: null
     },
     {
-      id: 'adminLogs' as const,
-      label: 'History Management',
-      icon: Clock,
+      id: 'adminScreeningHistory' as const,
+      label: 'Resume Screening History',
+      icon: History,
+      badge: historyCount > 0 ? historyCount : null
+    },
+    {
+      id: 'adminAtsHistory' as const,
+      label: 'ATS Checking History',
+      icon: FileCheck,
       badge: null
     }
   ];

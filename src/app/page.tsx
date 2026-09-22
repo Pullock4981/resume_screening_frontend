@@ -20,17 +20,17 @@ import { CandidateResult, AtsHistoryRecord } from '../types';
 
 function MainAppContent() {
   const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   // Restrict non-admin users from accessing Admin control panel tabs
   useEffect(() => {
     if (isAuthenticated && !isAdmin) {
-      if (['adminDashboard', 'userManagement', 'adminLogs', 'admin'].includes(activeTab)) {
+      if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory'].includes(activeTab)) {
         setActiveTab('screening');
       }
     }
-  }, [isAdmin, isAuthenticated, activeTab]);
+  }, [isAdmin, isAuthenticated]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
@@ -424,8 +424,8 @@ function MainAppContent() {
             />
           )}
 
-          {/* TAB 3: Screening History */}
-          {activeTab === 'history' && (
+          {/* TAB 3 & Admin History Routes */}
+          {(activeTab === 'history' || activeTab === 'adminLogs' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory') && (
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
@@ -435,6 +435,13 @@ function MainAppContent() {
               onDeleteRecord={handleDeleteHistoryRecord}
               onSyncHistory={syncHistoryWithGoogleSheets}
               isSyncing={isSyncing}
+              defaultSubTab={
+                activeTab === 'adminAtsHistory'
+                  ? 'atsCheck'
+                  : activeTab === 'adminLogs'
+                  ? 'activityLogs'
+                  : 'screening'
+              }
             />
           )}
 
