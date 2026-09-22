@@ -136,7 +136,7 @@ export default function Sidebar({
             Main Menu
           </p>
 
-          {userMenuItems.map(item => {
+          {(isAdmin ? userMenuItems.filter(item => item.id === 'dashboard') : userMenuItems).map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 

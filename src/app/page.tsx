@@ -23,11 +23,17 @@ function MainAppContent() {
   const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
-  // Restrict non-admin users from accessing Admin control panel tabs
+  // Route access restrictions for Admin and User
   useEffect(() => {
-    if (isAuthenticated && !isAdmin) {
-      if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory'].includes(activeTab)) {
-        setActiveTab('screening');
+    if (isAuthenticated) {
+      if (!isAdmin) {
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory'].includes(activeTab)) {
+          setActiveTab('screening');
+        }
+      } else {
+        if (['screening', 'atsCheck', 'dictionary', 'guide'].includes(activeTab)) {
+          setActiveTab('adminDashboard');
+        }
       }
     }
   }, [isAdmin, isAuthenticated]);
