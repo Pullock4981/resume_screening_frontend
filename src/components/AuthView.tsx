@@ -108,8 +108,8 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
           <button
             type="button"
             onClick={() => {
-              setEmail('admin@admin.com');
-              setPassword('admin123');
+              setEmail('nexadmin.ph@gmail.com');
+              setPassword('@1234Admin');
               switchMode('login');
             }}
             className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1"
