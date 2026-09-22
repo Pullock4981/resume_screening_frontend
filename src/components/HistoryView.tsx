@@ -45,7 +45,7 @@ export default function HistoryView({
   isSyncing = false
 }: HistoryViewProps) {
   const isDark = theme === 'dark';
-  const { token, user } = useAuth();
+  const { token, user, isAdmin } = useAuth();
 
   const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'activityLogs'>('screening');
   const [filterByUser, setFilterByUser] = useState<'all' | 'me'>('all');
@@ -279,7 +279,11 @@ export default function HistoryView({
           }`}
         >
           <Clock className="w-4 h-4 text-purple-500" />
-          <span>User Activity Audit Logs ({activityLogs.length})</span>
+          <span>
+            {isAdmin 
+              ? `User Activity Audit Logs (${activityLogs.length})` 
+              : `My Checks Summary (${sortedRecords.length + sortedAtsRecords.length})`}
+          </span>
         </button>
       </div>
 
@@ -536,115 +540,225 @@ export default function HistoryView({
         )
       )}
 
-      {/* SUB-TAB 3: User Activity Audit Trail Logs */}
+      {/* SUB-TAB 3: User Activity & Performed Checks */}
       {activeSubTab === 'activityLogs' && (
-        <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
-          <div className="p-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <span className="font-bold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-400" />
-              Master Google Sheet User Activity & Audit Logs ({filteredActivityLogs.length})
-            </span>
-            <div className="flex items-center gap-3">
-              {user?.email && (
-                <div className={`flex items-center gap-1 p-0.5 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-                  <button
-                    type="button"
-                    onClick={() => setFilterByUser('all')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${
-                      filterByUser === 'all'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    All Users Activity ({activityLogs.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterByUser('me')}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 ${
-                      filterByUser === 'me'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>My Activity Only</span>
-                    <span className="text-[10px] opacity-75">({user.name || user.email.split('@')[0]})</span>
-                  </button>
+        !isAdmin ? (
+          /* REGULAR USER VIEW: Clean Performed Checks Summary & User Logs */
+          <div className="space-y-6">
+            {/* User Check Statistics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className={`p-5 rounded-2xl border flex items-center gap-4 ${
+                isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+                <div className="p-3.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <History className="w-6 h-6" />
                 </div>
-              )}
-              <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Tab: Login_Logs
-              </span>
+                <div>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Job Screening Batches</p>
+                  <p className="text-2xl font-black font-mono text-indigo-400">{sortedRecords.length}</p>
+                  <p className="text-[11px] text-slate-500">{sortedRecords.reduce((s, r) => s + (r.totalCandidates || 0), 0)} candidates evaluated</p>
+                </div>
+              </div>
+
+              <div className={`p-5 rounded-2xl border flex items-center gap-4 ${
+                isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+                <div className="p-3.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <FileCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ATS Resume Checks</p>
+                  <p className="text-2xl font-black font-mono text-cyan-400">{sortedAtsRecords.length}</p>
+                  <p className="text-[11px] text-slate-500">{sortedAtsRecords.reduce((s, r) => s + (r.totalCandidates || 0), 0)} resumes evaluated</p>
+                </div>
+              </div>
+
+              <div className={`p-5 rounded-2xl border flex items-center gap-4 ${
+                isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+                <div className="p-3.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Operations Executed</p>
+                  <p className="text-2xl font-black font-mono text-purple-400">{sortedRecords.length + sortedAtsRecords.length}</p>
+                  <p className="text-[11px] text-slate-500">All checks combined</p>
+                </div>
+              </div>
+            </div>
+
+            {/* My Executed Activity Logs */}
+            <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+              <div className="p-4 border-b border-slate-800/60 flex items-center justify-between text-xs">
+                <span className="font-bold flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-400" />
+                  My Executed Activity & Check Logs ({activityLogs.filter(l => (l.email || '').toLowerCase() === (user?.email || '').toLowerCase()).length})
+                </span>
+                <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  User: {user?.email}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                      <th className="p-3.5">Activity Timestamp</th>
+                      <th className="p-3.5">Operation Type</th>
+                      <th className="p-3.5">Executed Action Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                    {activityLogs.filter(l => (l.email || '').toLowerCase() === (user?.email || '').toLowerCase()).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className={`p-8 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          No activity checks recorded yet for your account. Run a job screening or ATS check to populate this.
+                        </td>
+                      </tr>
+                    ) : (
+                      activityLogs
+                        .filter(l => (l.email || '').toLowerCase() === (user?.email || '').toLowerCase())
+                        .map((log, idx) => (
+                          <tr key={log.id || idx} className={`transition ${isDark ? 'hover:bg-purple-500/5' : 'hover:bg-purple-50/60'}`}>
+                            <td className={`p-3.5 font-mono ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
+                              {log.loginTime}
+                            </td>
+                            <td className="p-3.5">
+                              {log.details.includes('ATS') ? (
+                                <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-bold">
+                                  ATS Check
+                                </span>
+                              ) : log.details.includes('Screening') ? (
+                                <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                                  Screening Batch
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                                  Login Session
+                                </span>
+                              )}
+                            </td>
+                            <td className={`p-3.5 ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
+                              {log.details}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+        ) : (
+          /* ADMIN VIEW: Full Master System Audit Logs Table with User Toggle */
+          <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+            <div className="p-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <span className="font-bold flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-400" />
+                Master Google Sheet User Activity & Audit Logs ({filteredActivityLogs.length})
+              </span>
+              <div className="flex items-center gap-3">
+                {user?.email && (
+                  <div className={`flex items-center gap-1 p-0.5 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setFilterByUser('all')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${
+                        filterByUser === 'all'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      All Users Activity ({activityLogs.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterByUser('me')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 ${
+                        filterByUser === 'me'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>My Activity Only</span>
+                      <span className="text-[10px] opacity-75">({user.name || user.email.split('@')[0]})</span>
+                    </button>
+                  </div>
+                )}
+                <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Tab: Login_Logs
+                </span>
+              </div>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
-                  <th className="p-3.5">User Email</th>
-                  <th className="p-3.5">Role</th>
-                  <th className="p-3.5">Activity Timestamp</th>
-                  <th className="p-3.5">Audit Details / Performed Action</th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
-                {filteredActivityLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className={`p-8 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      No user activity audit logs recorded yet.
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                    <th className="p-3.5">User Email</th>
+                    <th className="p-3.5">Role</th>
+                    <th className="p-3.5">Activity Timestamp</th>
+                    <th className="p-3.5">Audit Details / Performed Action</th>
                   </tr>
-                ) : (
-                  filteredActivityLogs.map((log, idx) => (
-                    <tr key={log.id || idx} className={`transition ${isDark ? 'hover:bg-purple-500/5' : 'hover:bg-purple-50/60'}`}>
-                      <td className="p-3.5 font-bold font-mono text-indigo-600 dark:text-cyan-400 flex items-center gap-1.5">
-                        <span>{log.email}</span>
-                        {user?.email && (log.email || '').toLowerCase() === user.email.toLowerCase() && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30">
-                            You
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                          log.role === 'admin'
-                            ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300'
-                            : isDark
-                            ? 'bg-slate-800 text-slate-300 border-slate-700'
-                            : 'bg-slate-200 text-slate-800 border-slate-300'
-                        }`}>
-                          {log.role}
-                        </span>
-                      </td>
-                      <td className={`p-3.5 font-mono ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
-                        {log.loginTime}
-                      </td>
-                      <td className={`p-3.5 ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
-                        <span className="flex items-center gap-1.5">
-                          {log.details.includes('ATS') ? (
-                            <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 text-[10px] font-bold">
-                              ATS Check
-                            </span>
-                          ) : log.details.includes('Screening') ? (
-                            <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
-                              Screening Batch
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                              Login Session
-                            </span>
-                          )}
-                          <span>{log.details}</span>
-                        </span>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                  {filteredActivityLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className={`p-8 text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        No user activity audit logs recorded yet.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredActivityLogs.map((log, idx) => (
+                      <tr key={log.id || idx} className={`transition ${isDark ? 'hover:bg-purple-500/5' : 'hover:bg-purple-50/60'}`}>
+                        <td className="p-3.5 font-bold font-mono text-indigo-600 dark:text-cyan-400 flex items-center gap-1.5">
+                          <span>{log.email}</span>
+                          {user?.email && (log.email || '').toLowerCase() === user.email.toLowerCase() && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30">
+                              You
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                            log.role === 'admin'
+                              ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300'
+                              : isDark
+                              ? 'bg-slate-800 text-slate-300 border-slate-700'
+                              : 'bg-slate-200 text-slate-800 border-slate-300'
+                          }`}>
+                            {log.role}
+                          </span>
+                        </td>
+                        <td className={`p-3.5 font-mono ${isDark ? 'text-slate-300' : 'text-slate-700 font-medium'}`}>
+                          {log.loginTime}
+                        </td>
+                        <td className={`p-3.5 ${isDark ? 'text-slate-300' : 'text-slate-800 font-medium'}`}>
+                          <span className="flex items-center gap-1.5">
+                            {log.details.includes('ATS') ? (
+                              <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 text-[10px] font-bold">
+                                ATS Check
+                              </span>
+                            ) : log.details.includes('Screening') ? (
+                              <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                                Screening Batch
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                                Login Session
+                              </span>
+                            )}
+                            <span>{log.details}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Selected ATS Record Modal Viewer */}
