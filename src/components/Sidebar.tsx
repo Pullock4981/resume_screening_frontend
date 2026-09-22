@@ -27,6 +27,7 @@ interface SidebarProps {
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
   historyCount?: number;
+  atsHistoryCount?: number;
 }
 
 export default function Sidebar({
@@ -35,7 +36,8 @@ export default function Sidebar({
   theme,
   setTheme,
   candidateCount,
-  historyCount = 0
+  historyCount = 0,
+  atsHistoryCount = 0
 }: SidebarProps) {
   const isDark = theme === 'dark';
   const { user, isAdmin, logout } = useAuth();
@@ -63,7 +65,7 @@ export default function Sidebar({
       id: 'adminAtsHistory' as const,
       label: 'ATS Checking History',
       icon: FileCheck,
-      badge: null
+      badge: atsHistoryCount > 0 ? atsHistoryCount : null
     }
   ];
 

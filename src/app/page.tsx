@@ -343,7 +343,8 @@ function MainAppContent() {
         theme={theme}
         setTheme={setTheme}
         candidateCount={candidates.length}
-        historyCount={historyRecords.length}
+        historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '')).length}
+        atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
       />
 
       {/* Main Right Content Panel */}
