@@ -102,22 +102,6 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
           </button>
         </div>
 
-        {/* Quick Admin Fill Shortcut */}
-        <div className="flex items-center justify-between text-xs px-1">
-          <span className="text-slate-400 text-[11px]">System Credentials:</span>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('nexadmin.ph@gmail.com');
-              setPassword('@1234Admin');
-              switchMode('login');
-            }}
-            className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1"
-          >
-            <Sparkles className="w-3 h-3 text-amber-400" /> Auto-Fill Default Admin
-          </button>
-        </div>
-
         {/* Feedback Banners */}
         {authError && (
           <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold flex items-center gap-2">
