@@ -46,10 +46,21 @@ export default function ProjectDashboardView({
   let projectDate = '';
   let projectSheetUrl = '';
 
-  if (selectedProjectId === 'latest' || (!selectedProjectId && activeCandidates.length > 0)) {
-    displayedCandidates = activeCandidates;
-    projectTitle = 'Latest Screening Batch';
-    projectDate = 'Just Now';
+  if (selectedProjectId === 'latest') {
+    if (activeCandidates.length > 0) {
+      displayedCandidates = activeCandidates;
+      projectTitle = 'Latest Screening Batch';
+      projectDate = 'Just Now';
+    } else if (historyRecords.length > 0) {
+      const latestRec = historyRecords[0];
+      displayedCandidates = latestRec.candidates || [];
+      projectTitle = latestRec.operationName || 'Latest Screening Project';
+      projectDate = latestRec.dateFormatted || '';
+      projectSheetUrl = latestRec.studentSheetUrl || '';
+    } else {
+      displayedCandidates = [];
+      projectTitle = 'Latest Screening Batch';
+    }
   } else if (currentRecord) {
     displayedCandidates = currentRecord.candidates || [];
     projectTitle = currentRecord.operationName || 'Screening Project';

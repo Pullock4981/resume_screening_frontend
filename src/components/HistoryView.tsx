@@ -45,9 +45,10 @@ export default function HistoryView({
   isSyncing = false
 }: HistoryViewProps) {
   const isDark = theme === 'dark';
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'activityLogs'>('screening');
+  const [filterByUser, setFilterByUser] = useState<'all' | 'me'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -128,11 +129,16 @@ export default function HistoryView({
     r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredActivityLogs = activityLogs.filter(l =>
-    (l.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (l.details || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (l.loginTime || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredActivityLogs = activityLogs.filter(l => {
+    const matchesUser = filterByUser === 'me' && user?.email
+      ? (l.email || '').toLowerCase() === user.email.toLowerCase()
+      : true;
+    const matchesQuery =
+      (l.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.details || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.loginTime || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesUser && matchesQuery;
+  });
 
   const handleCopyUrl = (id: string, url: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -533,14 +539,43 @@ export default function HistoryView({
       {/* SUB-TAB 3: User Activity Audit Trail Logs */}
       {activeSubTab === 'activityLogs' && (
         <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
-          <div className="p-4 border-b border-slate-800/60 flex items-center justify-between text-xs">
+          <div className="p-4 border-b border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <span className="font-bold flex items-center gap-2">
               <Clock className="w-4 h-4 text-purple-400" />
               Master Google Sheet User Activity & Audit Logs ({filteredActivityLogs.length})
             </span>
-            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Tab: Login_Logs (Central Central Database)
-            </span>
+            <div className="flex items-center gap-3">
+              {user?.email && (
+                <div className={`flex items-center gap-1 p-0.5 rounded-lg border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setFilterByUser('all')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${
+                      filterByUser === 'all'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All Users Activity ({activityLogs.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterByUser('me')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1 ${
+                      filterByUser === 'me'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>My Activity Only</span>
+                    <span className="text-[10px] opacity-75">({user.name || user.email.split('@')[0]})</span>
+                  </button>
+                </div>
+              )}
+              <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Tab: Login_Logs
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -563,8 +598,13 @@ export default function HistoryView({
                 ) : (
                   filteredActivityLogs.map((log, idx) => (
                     <tr key={log.id || idx} className={`transition ${isDark ? 'hover:bg-purple-500/5' : 'hover:bg-purple-50/60'}`}>
-                      <td className="p-3.5 font-bold font-mono text-indigo-600 dark:text-cyan-400">
-                        {log.email}
+                      <td className="p-3.5 font-bold font-mono text-indigo-600 dark:text-cyan-400 flex items-center gap-1.5">
+                        <span>{log.email}</span>
+                        {user?.email && (log.email || '').toLowerCase() === user.email.toLowerCase() && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30">
+                            You
+                          </span>
+                        )}
                       </td>
                       <td className="p-3.5">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
