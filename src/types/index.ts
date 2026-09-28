@@ -109,3 +109,47 @@ export interface LoginAuditLog {
   details: string;
 }
 
+export interface GithubBreakdownItem {
+  title: string;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  detail: string;
+}
+
+export interface GithubTopRepo {
+  name: string;
+  url: string;
+  description: string;
+  language: string;
+  homepage?: string;
+  stars: number;
+}
+
+export interface GithubCheckItem {
+  username: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  avatarUrl: string;
+  profileUrl: string;
+  bio: string;
+  location: string;
+  publicRepos: number;
+  followers: number;
+  following: number;
+  totalScore: number;
+  maxScore: number; // 60
+  percentage: number;
+  grade: string;
+  gradeColor: 'emerald' | 'cyan' | 'amber' | 'rose';
+  breakdown: GithubBreakdownItem[];
+  topRepos: GithubTopRepo[];
+}
+
+export interface GithubCheckData {
+  total: number;
+  results: GithubCheckItem[];
+}
+
+

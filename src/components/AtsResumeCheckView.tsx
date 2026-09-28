@@ -117,9 +117,18 @@ export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord
     setProgress({ completed: 0, total: 0, currentCandidate: '' });
 
     const isSheet = inputUrl.includes('docs.google.com/spreadsheets');
+    const isGithubLink = !isSheet && inputUrl.toLowerCase().includes('github.com');
+
+    if (isGithubLink) {
+      setErrorMessage("⚠️ GitHub Profile link detected! For 60-Point GitHub Profile Evaluation, please switch to the 'GitHub Profile Check' route in the sidebar.");
+      setIsLoading(false);
+      return;
+    }
+
     const payload = isSheet
       ? { sheetUrl: inputUrl.trim(), masterSheetUrl: masterSheetUrl.trim(), operationName: operationName.trim() }
       : { resumeUrl: inputUrl.trim(), masterSheetUrl: masterSheetUrl.trim(), operationName: operationName.trim() };
+
 
     const backendUrl = getBackendUrl();
 

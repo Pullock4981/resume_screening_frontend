@@ -13,6 +13,7 @@ import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
+import GithubCheckView from '../components/GithubCheckView';
 import AdminUserManagementView from '../components/AdminUserManagementView';
 import AuthView from '../components/AuthView';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -20,23 +21,25 @@ import { CandidateResult, AtsHistoryRecord } from '../types';
 
 function MainAppContent() {
   const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory'>('screening');
+  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'githubCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory' | 'adminGithubHistory'>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   // Route access restrictions for Admin and User
   useEffect(() => {
     if (isAuthenticated) {
       if (!isAdmin) {
-        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory'].includes(activeTab)) {
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory'].includes(activeTab)) {
           setActiveTab('screening');
         }
       } else {
-        if (['screening', 'atsCheck', 'dictionary', 'guide'].includes(activeTab)) {
+        if (['screening', 'atsCheck', 'githubCheck', 'dictionary', 'guide'].includes(activeTab)) {
           setActiveTab('adminDashboard');
         }
       }
     }
   }, [isAdmin, isAuthenticated]);
+
+
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
@@ -415,6 +418,10 @@ function MainAppContent() {
           {/* TAB: ATS Resume Check (100-Point Rubric) */}
           {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} onSaveHistoryRecord={handleSaveAtsRecord} />}
 
+          {/* TAB: GitHub Profile Check (60-Point Rubric) */}
+          {activeTab === 'githubCheck' && <GithubCheckView theme={theme} />}
+
+
           {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
           {activeTab === 'dashboard' && (
             <ProjectDashboardView
@@ -432,7 +439,7 @@ function MainAppContent() {
           )}
 
           {/* TAB 3 & Admin History Routes */}
-          {(activeTab === 'history' || activeTab === 'adminLogs' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory') && (
+          {(activeTab === 'history' || activeTab === 'adminLogs' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory') && (
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
@@ -443,7 +450,9 @@ function MainAppContent() {
               onSyncHistory={syncHistoryWithGoogleSheets}
               isSyncing={isSyncing}
               defaultSubTab={
-                activeTab === 'adminAtsHistory'
+                activeTab === 'adminGithubHistory'
+                  ? 'githubCheck'
+                  : activeTab === 'adminAtsHistory'
                   ? 'atsCheck'
                   : activeTab === 'adminLogs'
                   ? 'activityLogs'
@@ -451,6 +460,7 @@ function MainAppContent() {
               }
             />
           )}
+
 
           {/* TAB: Admin User Management Panel & Dashboard */}
           {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" />}
