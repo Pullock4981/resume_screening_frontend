@@ -65,6 +65,12 @@ export default function Sidebar({
       badge: null
     },
     {
+      id: 'adminLogs' as const,
+      label: 'User Activity Audit Logs',
+      icon: Clock,
+      badge: null
+    },
+    {
       id: 'adminScreeningHistory' as const,
       label: 'Resume Screening History',
       icon: History,
@@ -103,13 +109,6 @@ export default function Sidebar({
       label: 'GitHub Profile Check',
       icon: GithubIcon,
       badge: null
-    },
-
-    {
-      id: 'dashboard' as const,
-      label: 'Dashboard & Results',
-      icon: LayoutDashboard,
-      badge: candidateCount > 0 ? candidateCount : null
     },
     {
       id: 'history' as const,
@@ -156,50 +155,52 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Main Navigation Menu */}
-        <div className="p-3 space-y-1">
-          <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Main Menu
-          </p>
+        {/* Main Navigation Menu (Only for Non-Admin Users) */}
+        {!isAdmin && (
+          <div className="p-3 space-y-1">
+            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Main Menu
+            </p>
 
-          {(isAdmin ? userMenuItems.filter(item => item.id === 'dashboard') : userMenuItems).map(item => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
+            {userMenuItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
-                  isActive
-                    ? isDark
-                      ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
-                      : 'bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm'
-                    : isDark
-                    ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <span>{item.label}</span>
-                </div>
-
-                {item.badge !== null && (
-                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
                     isActive
-                      ? 'bg-indigo-500 text-white'
+                      ? isDark
+                        ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
+                        : 'bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm'
                       : isDark
-                      ? 'bg-slate-800 text-slate-300'
-                      : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <span>{item.label}</span>
+                  </div>
+
+                  {item.badge !== null && (
+                    <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                      isActive
+                        ? 'bg-indigo-500 text-white'
+                        : isDark
+                        ? 'bg-slate-800 text-slate-300'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Admin Control Panel Menu (Only for Admin) */}
         {isAdmin && (

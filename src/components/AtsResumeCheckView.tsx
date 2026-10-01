@@ -632,44 +632,76 @@ export default function AtsResumeCheckView({ theme = 'dark', onSaveHistoryRecord
               </div>
             </div>
 
-            {/* Precise General Feedback Box */}
-            <div className={`p-4 rounded-xl border space-y-3 ${
-              isDark ? 'bg-indigo-950/30 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'
-            }`}>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-cyan-400" /> Precise General Feedback & Recommendations
+            {/* General Feedback Summary Banner */}
+            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-cyan-400" /> Automated ATS Rubric Evaluation Summary
               </h4>
-
-              <p className="text-xs font-medium leading-relaxed">
-                {selectedResult.feedback?.summary}
+              <p className={`text-xs leading-relaxed font-mono p-3 rounded-lg border ${
+                isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-900 font-medium'
+              }`}>
+                {selectedResult.feedback?.summary || 'ATS Resume Rubric Evaluation Completed.'}
               </p>
+            </div>
 
-              {selectedResult.feedback?.strengths && selectedResult.feedback.strengths.length > 0 && (
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Key Strengths:
-                  </span>
-                  <ul className="list-disc list-inside text-xs text-slate-300 space-y-0.5 pl-1">
-                    {selectedResult.feedback.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                  </ul>
-                </div>
-              )}
+            {/* OK vs NOT OK Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* OK / ঠিক আছে Card */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+              }`}>
+                <h5 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" /> ✅ OK / ঠিক আছে (Key Strengths & Passed Items)
+                </h5>
+                <ul className="space-y-2 text-xs">
+                  {selectedResult.feedback?.strengths && selectedResult.feedback.strengths.length > 0 ? (
+                    selectedResult.feedback.strengths.map((str, idx) => (
+                      <li key={idx} className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-emerald-200' : 'text-emerald-950'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                        <span className="leading-snug">{str}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-emerald-200' : 'text-emerald-950'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                      <span className="leading-snug">ATS Score {selectedResult.totalScore}/100 ({selectedResult.grade} Grade). Valid contact & structure.</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
 
-              {selectedResult.feedback?.improvements && selectedResult.feedback.improvements.length > 0 && (
-                <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Actionable Improvements Needed:
-                  </span>
-                  <ul className="list-disc list-inside text-xs text-slate-300 space-y-0.5 pl-1">
-                    {selectedResult.feedback.improvements.map((imp, i) => <li key={i}>{imp}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-indigo-500/20 text-xs font-bold text-cyan-400">
-                📌 Recommendation: {selectedResult.feedback?.recommendation}
+              {/* NOT OK / কমতি আছে Card */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-50 border-rose-200'
+              }`}>
+                <h5 className="text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                  <XCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" /> ❌ NOT OK / কমতি আছে (Actionable Fixes & Gaps)
+                </h5>
+                <ul className="space-y-2 text-xs">
+                  {selectedResult.feedback?.improvements && selectedResult.feedback.improvements.length > 0 ? (
+                    selectedResult.feedback.improvements.map((imp, idx) => (
+                      <li key={idx} className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-rose-200' : 'text-rose-950'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                        <span className="leading-snug">{imp}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-rose-200' : 'text-rose-950'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                      <span className="leading-snug">No major formatting flaws detected. Focus on adding quantifiable achievements.</span>
+                    </li>
+                  )}
+                </ul>
               </div>
             </div>
+
+            {selectedResult.feedback?.recommendation && (
+              <div className={`p-3.5 rounded-xl border text-xs font-bold ${
+                isDark ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-900'
+              }`}>
+                📌 Recommendation: {selectedResult.feedback.recommendation}
+              </div>
+            )}
           </div>
         </div>
       )}

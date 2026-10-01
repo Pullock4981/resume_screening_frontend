@@ -96,17 +96,168 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
             </div>
           </div>
 
-          {/* Automated Rule-Based Feedback */}
-          <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <h4 className="text-xs font-semibold flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-indigo-500" /> Automated Rule-Based Summary & Feedback
-            </h4>
-            <p className={`text-xs leading-relaxed font-mono p-3 rounded-lg border ${
-              isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-800'
-            }`}>
-              {candidate.feedback}
-            </p>
-          </div>
+          {/* Automated Rule-Based Feedback & Bulleted Breakdown */}
+          {(() => {
+            const getFeedbackBreakdown = () => {
+              const okItems: string[] = [];
+              const notOkItems: string[] = [];
+
+              // 1. Must Have Skills
+              if (candidate.matchingResults?.mustHaveResults) {
+                const matched = candidate.matchingResults.mustHaveResults.filter(r => r.status !== 'Missing');
+                const missing = candidate.matchingResults.mustHaveResults.filter(r => r.status === 'Missing');
+
+                if (matched.length > 0) {
+                  okItems.push(`Matched Must-Have Skills: ${matched.map(m => m.name).join(', ')}`);
+                }
+                missing.forEach(m => {
+                  notOkItems.push(`Missing Required Skill: ${m.name}${m.reason ? ` (${m.reason})` : ''}`);
+                });
+              }
+
+              // 2. Nice To Have Skills
+              if (candidate.matchingResults?.niceToHaveResults) {
+                const matchedBonus = candidate.matchingResults.niceToHaveResults.filter(r => r.status !== 'Missing');
+                const missingBonus = candidate.matchingResults.niceToHaveResults.filter(r => r.status === 'Missing');
+
+                if (matchedBonus.length > 0) {
+                  okItems.push(`Bonus / Nice-to-Have Skills Matched: ${matchedBonus.map(m => m.name).join(', ')}`);
+                }
+                if (missingBonus.length > 0) {
+                  notOkItems.push(`Nice-to-Have Gap: ${missingBonus.map(m => m.name).join(', ')}`);
+                }
+              }
+
+              // 3. Critical Flag
+              if (candidate.criticalFlag || (candidate.matchingResults?.criticalMissing && candidate.matchingResults.criticalMissing.length > 0)) {
+                const missingList = candidate.matchingResults?.criticalMissing?.join(', ') || 'Essential requirements missing';
+                notOkItems.push(`Critical Missing Skill Warning: (${missingList}). 10% penalty applied.`);
+              }
+
+              // 4. ATS Checklist
+              if (candidate.atsDetails?.checklist) {
+                const passedList = candidate.atsDetails.checklist.filter(c => c.passed);
+                const failedList = candidate.atsDetails.checklist.filter(c => !c.passed);
+                passedList.forEach(p => okItems.push(`ATS Format OK: ${p.name} (${p.detail})`));
+                failedList.forEach(f => notOkItems.push(`ATS Format Issue: ${f.name} (${f.detail})`));
+              }
+
+              // 5. Unrelated / Extra Skills Penalty Notice
+              if (candidate.matchingResults?.extraSkills && candidate.matchingResults.extraSkills.length > 0) {
+                const penaltyStr = candidate.matchingResults.extraSkillsPenalty ? ` (-${candidate.matchingResults.extraSkillsPenalty}% Penalty Applied)` : '';
+                notOkItems.push(`Irrelevant / Extra Skills Found${penaltyStr}: ${candidate.matchingResults.extraSkills.join(', ')}`);
+              }
+
+              // 5. Fallback Parsing from candidate.feedback String
+              if (candidate.feedback) {
+                const fbText = candidate.feedback;
+
+                if (!okItems.some(i => i.toLowerCase().includes('matched'))) {
+                  const matchMatch = fbText.match(/Matched Skills:\s*([^.\n]+)/i);
+                  if (matchMatch && matchMatch[1]) {
+                    okItems.push(`Matched Skills: ${matchMatch[1].trim()}`);
+                  }
+                }
+
+                if (!okItems.some(i => i.toLowerCase().includes('bonus'))) {
+                  const bonusMatch = fbText.match(/Bonus Skills:\s*([^.\n]+)/i);
+                  if (bonusMatch && bonusMatch[1]) {
+                    okItems.push(`Bonus Skills: ${bonusMatch[1].trim()}`);
+                  }
+                }
+
+                if (!notOkItems.some(i => i.toLowerCase().includes('missing'))) {
+                  const missingMatch = fbText.match(/Missing Skills:\s*([^.\n]+)/i);
+                  if (missingMatch && missingMatch[1]) {
+                    notOkItems.push(`Missing Skills: ${missingMatch[1].trim()}`);
+                  }
+                }
+
+                // Extract Formatting Notes & Action Verb Warnings without breaking on e.g.
+                const formatMatch = fbText.match(/Formatting Notes:\s*([^]+)/i);
+                if (formatMatch && formatMatch[1]) {
+                  const rawNotes = formatMatch[1].trim();
+                  // Clean up e.g. dots temporarily to avoid bad splitting
+                  const normalizedNotes = rawNotes.replace(/e\.g\./g, 'e_g_');
+                  normalizedNotes.split(/(?<=\.)\s+/).forEach(note => {
+                    const cleanNote = note.replace(/e_g_/g, 'e.g.').trim();
+                    if (cleanNote && cleanNote.length > 5 && !notOkItems.some(i => i.includes(cleanNote))) {
+                      notOkItems.push(cleanNote.startsWith('Formatting Notes:') ? cleanNote : `ATS Formatting Note: ${cleanNote}`);
+                    }
+                  });
+                }
+              }
+
+              // Default fallbacks if empty
+              if (okItems.length === 0) {
+                okItems.push(`Overall Candidate Score: ${candidate.finalScore}% (${candidate.category})`);
+              }
+              if (notOkItems.length === 0) {
+                notOkItems.push(`No critical skill gaps or formatting violations detected.`);
+              }
+
+              return { okItems, notOkItems };
+            };
+
+            const { okItems, notOkItems } = getFeedbackBreakdown();
+
+            return (
+              <div className="space-y-4">
+                {/* Full Summary Text */}
+                <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                  <h4 className="text-xs font-bold flex items-center gap-1.5 text-indigo-500 dark:text-indigo-400">
+                    <FileText className="w-4 h-4" /> Automated Rule-Based Summary & Evaluation
+                  </h4>
+                  <p className={`text-xs leading-relaxed font-mono p-3 rounded-lg border ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-900 font-medium'
+                  }`}>
+                    {candidate.feedback}
+                  </p>
+                </div>
+
+                {/* Point 3: Bulleted OK vs NOT OK Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* OK / ঠিক আছে Box */}
+                  <div className={`p-4 rounded-xl border space-y-3 ${
+                    isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <h5 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" /> ✅ OK / ঠিক আছে (Strengths & Matches)
+                    </h5>
+                    <ul className="space-y-2 text-xs">
+                      {okItems.map((item, idx) => (
+                        <li key={idx} className={`flex items-start gap-2.5 font-medium ${
+                          isDark ? 'text-emerald-200' : 'text-emerald-950'
+                        }`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                          <span className="leading-snug">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* NOT OK / কমতি আছে Box */}
+                  <div className={`p-4 rounded-xl border space-y-3 ${
+                    isDark ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-50 border-rose-200'
+                  }`}>
+                    <h5 className="text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <XCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" /> ❌ NOT OK / কমতি আছে (Gaps & Fixes Needed)
+                    </h5>
+                    <ul className="space-y-2 text-xs">
+                      {notOkItems.map((item, idx) => (
+                        <li key={idx} className={`flex items-start gap-2.5 font-medium ${
+                          isDark ? 'text-rose-200' : 'text-rose-950'
+                        }`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                          <span className="leading-snug">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Must Have Requirements Breakdown */}
           <div>

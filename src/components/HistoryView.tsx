@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, RefreshCw, FileCheck, Award, Sparkles, X, ChevronRight, Eye } from 'lucide-react';
+import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, RefreshCw, FileCheck, Award, Sparkles, X, ChevronRight, Eye, User, Filter } from 'lucide-react';
 import { CandidateResult, AtsHistoryRecord, AtsRubricResult, GithubCheckItem } from '../types';
 
 const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -79,6 +79,8 @@ export default function HistoryView({
   const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'githubCheck' | 'activityLogs'>(defaultSubTab || 'screening');
 
   const [filterByUser, setFilterByUser] = useState<'all' | 'me'>('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'high' | 'moderate' | 'low'>('all');
 
   useEffect(() => {
     if (defaultSubTab) {
@@ -161,6 +163,32 @@ export default function HistoryView({
   }, [token, atsHistoryRecords?.length, githubHistoryRecords?.length]);
 
 
+  const getExecutorEmail = (item: any) => {
+    if (item.userEmail) return item.userEmail;
+    if (!item.operationName && !item.studentSheetUrl) return user?.email || 'System User';
+    const op = (item.operationName || '').toLowerCase();
+    const match = activityLogs.find(l => l.details && op && op.length > 2 && l.details.toLowerCase().includes(op));
+    if (match && match.email) return match.email;
+    return user?.email || 'System User';
+  };
+
+  const matchesDateRange = (timestampStr?: string) => {
+    if (dateRangeFilter === 'all' || !timestampStr) return true;
+    const time = new Date(timestampStr).getTime();
+    if (isNaN(time)) return true;
+    const diffMs = Date.now() - time;
+    if (dateRangeFilter === 'today') return diffMs <= 24 * 60 * 60 * 1000;
+    if (dateRangeFilter === '7days') return diffMs <= 7 * 24 * 60 * 60 * 1000;
+    if (dateRangeFilter === '30days') return diffMs <= 30 * 24 * 60 * 60 * 1000;
+    return true;
+  };
+
+  const matchesUserFilter = (item: any) => {
+    if (filterByUser === 'all') return true;
+    const email = getExecutorEmail(item);
+    return user?.email ? email.toLowerCase() === user.email.toLowerCase() : true;
+  };
+
   // 1. Separate pure screening records from ATS & GitHub check records
   const pureScreeningRecords = historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github');
   const syncedAtsHistoryRecords = historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || ''));
@@ -171,11 +199,26 @@ export default function HistoryView({
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
-  const filteredRecords = sortedRecords.filter(r =>
-    r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRecords = sortedRecords.filter(r => {
+    const matchesQuery =
+      r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getExecutorEmail(r).toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesDate = matchesDateRange(r.timestamp);
+    const matchesUser = matchesUserFilter(r);
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'high'
+        ? r.goodToGoCount > 0
+        : statusFilter === 'moderate'
+        ? r.waitingListCount > 0
+        : r.notMatchingCount > 0;
+
+    return matchesQuery && matchesDate && matchesUser && matchesStatus;
+  });
 
   // 2. Convert synced ATS history records to AtsHistoryRecord shape
   const convertedSyncedAts: AtsHistoryRecord[] = syncedAtsHistoryRecords.map(syncedRec => ({
@@ -251,40 +294,75 @@ export default function HistoryView({
     }))
   }));
 
-  // Combine local ATS records
+  // Combine local ATS records: prefer remote Google Sheet synced records by unique ID
   const atsRecordMap = new Map<string, AtsHistoryRecord>();
-  localAtsRecords.forEach(r => atsRecordMap.set(r.operationName || r.id, r));
   convertedSyncedAts.forEach(r => {
-    if (!atsRecordMap.has(r.operationName || r.id)) {
-      atsRecordMap.set(r.operationName || r.id, r);
+    if (r.id) atsRecordMap.set(r.id, r);
+  });
+  localAtsRecords.forEach(r => {
+    const key = r.id || `${r.operationName}_${r.timestamp}`;
+    if (!atsRecordMap.has(key)) {
+      atsRecordMap.set(key, r);
     }
   });
 
   const allAtsRecordsCombined = Array.from(atsRecordMap.values());
   const sortedAtsRecords = [...allAtsRecordsCombined].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  const filteredAtsRecords = sortedAtsRecords.filter(r =>
-    r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAtsRecords = sortedAtsRecords.filter(r => {
+    const matchesQuery =
+      r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getExecutorEmail(r).toLowerCase().includes(searchQuery.toLowerCase());
 
-  // Combine local GitHub records
+    const matchesDate = matchesDateRange(r.timestamp);
+    const matchesUser = matchesUserFilter(r);
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'high'
+        ? (r.excellentCount > 0 || r.strongCount > 0)
+        : statusFilter === 'moderate'
+        ? r.moderateCount > 0
+        : r.needsWorkCount > 0;
+
+    return matchesQuery && matchesDate && matchesUser && matchesStatus;
+  });
+
+  // Combine local GitHub records: prefer remote Google Sheet synced records by unique ID
   const githubRecordMap = new Map<string, GithubHistoryRecord>();
-  localGithubRecords.forEach(r => githubRecordMap.set(r.operationName || r.id, r));
   convertedSyncedGithub.forEach(r => {
-    if (!githubRecordMap.has(r.operationName || r.id)) {
-      githubRecordMap.set(r.operationName || r.id, r);
+    if (r.id) githubRecordMap.set(r.id, r);
+  });
+  localGithubRecords.forEach(r => {
+    const key = r.id || `${r.operationName}_${r.timestamp}`;
+    if (!githubRecordMap.has(key)) {
+      githubRecordMap.set(key, r);
     }
   });
 
   const allGithubRecordsCombined = Array.from(githubRecordMap.values());
   const sortedGithubRecords = [...allGithubRecordsCombined].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  const filteredGithubRecords = sortedGithubRecords.filter(r =>
-    r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGithubRecords = sortedGithubRecords.filter(r => {
+    const matchesQuery =
+      r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.studentSheetUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getExecutorEmail(r).toLowerCase().includes(searchQuery.toLowerCase());
 
+    const matchesDate = matchesDateRange(r.timestamp);
+    const matchesUser = matchesUserFilter(r);
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'high'
+        ? (r.excellentCount > 0 || r.strongCount > 0)
+        : statusFilter === 'moderate'
+        ? r.moderateCount > 0
+        : r.needsImprovementCount > 0;
+
+    return matchesQuery && matchesDate && matchesUser && matchesStatus;
+  });
 
   const filteredActivityLogs = activityLogs.filter(l => {
     const matchesUser = filterByUser === 'me' && user?.email
@@ -297,13 +375,15 @@ export default function HistoryView({
     return matchesUser && matchesQuery;
   });
 
-  const getExecutorEmail = (item: any) => {
-    if (item.userEmail) return item.userEmail;
-    if (!item.operationName && !item.studentSheetUrl) return user?.email || 'System User';
-    const op = (item.operationName || '').toLowerCase();
-    const match = activityLogs.find(l => l.details && op && op.length > 2 && l.details.toLowerCase().includes(op));
-    if (match && match.email) return match.email;
-    return user?.email || 'System User';
+  const getExecutorInfo = (item: any) => {
+    const email = getExecutorEmail(item);
+    let name = '';
+    if (email && email.includes('@')) {
+      const parts = email.split('@')[0].split(/[-._\d]/).filter(Boolean);
+      name = parts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    }
+    if (!name) name = email || 'Central Admin';
+    return { name, email };
   };
 
   const handleCopyUrl = (id: string, url: string, e: React.MouseEvent) => {
@@ -500,25 +580,106 @@ export default function HistoryView({
       </div>
 
 
-      {/* Search Filter */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={
-            activeSubTab === 'screening'
-              ? "Search screening history..."
-              : activeSubTab === 'atsCheck'
-              ? "Search ATS check history..."
-              : "Search activity logs by email, date, or action..."
-          }
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`w-full border rounded-xl pl-4 pr-10 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            isDark
-              ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500'
-              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-          }`}
-        />
+      {/* Multi-Criteria Filter Toolbar (Point 4) */}
+      <div className={`p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-3 ${
+        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+      }`}>
+        {/* Search Input */}
+        <div className="relative w-full md:w-80">
+          <input
+            type="text"
+            placeholder={
+              activeSubTab === 'screening'
+                ? "Search screening history by title or user..."
+                : activeSubTab === 'atsCheck'
+                ? "Search ATS check history..."
+                : activeSubTab === 'githubCheck'
+                ? "Search GitHub check history..."
+                : "Search activity logs by email, date, or action..."
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full border rounded-xl pl-4 pr-10 py-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              isDark
+                ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500'
+                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+            }`}
+          />
+        </div>
+
+        {/* Filter Controls Group */}
+        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto text-xs">
+          {/* Date Filter */}
+          <div className="flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+            <select
+              value={dateRangeFilter}
+              onChange={(e) => setDateRangeFilter(e.target.value as any)}
+              className={`border rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+              }`}
+            >
+              <option value="all">📅 All Time</option>
+              <option value="today">⚡ Today (Past 24h)</option>
+              <option value="7days">🗓️ Past 7 Days</option>
+              <option value="30days">📆 Past 30 Days</option>
+            </select>
+          </div>
+
+          {/* Performance / Grade Filter */}
+          {activeSubTab !== 'activityLogs' && (
+            <div className="flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-purple-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className={`border rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                  isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                }`}
+              >
+                <option value="all">🎯 All Performance Ratings</option>
+                <option value="high">🟢 High Match / Good to Go / Excellent</option>
+                <option value="moderate">🟡 Moderate / Waiting List / Strong</option>
+                <option value="low">🔴 Needs Improvement / Reject</option>
+              </select>
+            </div>
+          )}
+
+          {/* User / Executor Filter */}
+          <div className="flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-cyan-400" />
+            <select
+              value={filterByUser}
+              onChange={(e) => setFilterByUser(e.target.value as any)}
+              className={`border rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+              }`}
+            >
+              <option value="all">👥 All Executed Users</option>
+              <option value="me">👤 My Actions Only ({user?.email ? user.email.split('@')[0] : 'Me'})</option>
+            </select>
+          </div>
+
+          {/* Reset Filters Button */}
+          {(searchQuery || dateRangeFilter !== 'all' || statusFilter !== 'all' || filterByUser !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setDateRangeFilter('all');
+                setStatusFilter('all');
+                setFilterByUser('all');
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1 border transition ${
+                isDark
+                  ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border-rose-500/30'
+                  : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200'
+              }`}
+              title="Reset all filters"
+            >
+              <X className="w-3.5 h-3.5" /> Clear Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* SUB-TAB 1: Job Screening History */}
@@ -534,111 +695,99 @@ export default function HistoryView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredRecords.map((item, index) => (
-              <div
-                key={item.id || index}
-                onClick={() => onSelectRecord(item)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg relative overflow-hidden ${
-                  isDark
-                    ? 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-100'
-                    : 'bg-white hover:bg-slate-50/80 border-slate-200 text-slate-900 shadow-xs'
-                }`}
-              >
-                {/* Recent Tag for the very first item */}
-                {index === 0 && !searchQuery && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-500 to-cyan-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-xs">
-                    ⚡ Most Recent
-                  </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-extrabold group-hover:text-indigo-400 transition">
-                        {item.operationName || 'Screening Operation'}
-                      </h3>
-                      <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-indigo-400" />
-                        {item.dateFormatted}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1 ${
-                        isDark ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}>
-                        👤 Executed by: {getExecutorEmail(item)}
-                      </span>
-                    </div>
-
-                    {/* Sheet URL & Copy */}
-                    <div className="flex items-center gap-2 text-xs font-mono opacity-80 overflow-hidden">
-                      <span className="truncate max-w-md text-slate-400">{item.studentSheetUrl}</span>
-                      <button
-                        onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
-                        className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
-                          copiedId === item.id
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                        }`}
-                        title="Copy Sheet URL"
-                      >
-                        {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                      {item.studentSheetUrl && (
-                        <a
-                          href={item.studentSheetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-indigo-400 hover:text-indigo-300"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Candidate Stats Pills */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-bold ${
-                      isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-                    }`}>
-                      <Users className="w-4 h-4 text-cyan-400" />
-                      <span>{item.totalCandidates} Total</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{item.goodToGoCount} Good to Go</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{item.waitingListCount} Waiting</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold flex items-center gap-1.5">
-                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                      <span>{item.notMatchingCount} Not Matching</span>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteRecord(item.id);
-                      }}
-                      className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                      title="Delete record"
+          <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                    <th className="p-3.5">Operation Title & Event</th>
+                    <th className="p-3.5">Executed User</th>
+                    <th className="p-3.5">Date & Time</th>
+                    <th className="p-3.5">Google Sheet URL</th>
+                    <th className="p-3.5">Candidates Breakdown</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                  {filteredRecords.map((item, index) => (
+                    <tr
+                      key={item.id || index}
+                      onClick={() => onSelectRecord(item)}
+                      className={`transition cursor-pointer ${isDark ? 'hover:bg-indigo-500/10' : 'hover:bg-indigo-50/60'}`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    <div className="p-2 rounded-xl bg-indigo-600/20 group-hover:bg-indigo-600 text-indigo-400 group-hover:text-white transition">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm">{item.operationName || 'Screening Operation'}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            📄 Screening Batch
+                          </span>
+                          {index === 0 && !searchQuery && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-2xs">
+                              ⚡ Most Recent
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-[10px]">
+                            {getExecutorInfo(item).name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">{getExecutorInfo(item).name}</div>
+                            <div className="text-[10px] font-mono opacity-75">{getExecutorInfo(item).email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px] opacity-80">{item.dateFormatted}</td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 max-w-xs overflow-hidden">
+                          <span className="truncate font-mono text-[11px] text-slate-400">{item.studentSheetUrl}</span>
+                          <button
+                            onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
+                            className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
+                              copiedId === item.id ? 'bg-emerald-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                            title="Copy Sheet URL"
+                          >
+                            {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                          {item.studentSheetUrl && (
+                            <a href={item.studentSheetUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-indigo-400 hover:text-indigo-300">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-200 border border-slate-700">{item.totalCandidates} Total</span>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{item.goodToGoCount} Good</span>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">{item.waitingListCount} Wait</span>
+                          <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">{item.notMatchingCount} Reject</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteRecord(item.id); }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Delete record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onSelectRecord(item)}
+                          className="p-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white transition inline-flex items-center gap-1"
+                          title="Open Results"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
@@ -656,109 +805,100 @@ export default function HistoryView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredAtsRecords.map((item, index) => (
-              <div
-                key={item.id || index}
-                onClick={() => setSelectedAtsRecord(item)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg relative overflow-hidden ${
-                  isDark
-                    ? 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-100'
-                    : 'bg-white hover:bg-slate-50/80 border-slate-200 text-slate-900 shadow-xs'
-                }`}
-              >
-                {/* Recent Tag */}
-                {index === 0 && !searchQuery && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-500 to-cyan-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-xs">
-                    ⚡ Most Recent ATS Run
-                  </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-extrabold group-hover:text-cyan-400 transition">
-                        {item.operationName || 'ATS Resume Check'}
-                      </h3>
-                      <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-cyan-400" />
-                        {item.dateFormatted}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1 ${
-                        isDark ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' : 'bg-cyan-50 text-cyan-700 border-cyan-200'
-                      }`}>
-                        👤 Executed by: {getExecutorEmail(item)}
-                      </span>
-                    </div>
-
-                    {/* Sheet / Resume URL */}
-                    <div className="flex items-center gap-2 text-xs font-mono opacity-80 overflow-hidden">
-                      <span className="truncate max-w-md text-slate-400">{item.studentSheetUrl}</span>
-                      <button
-                        onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
-                        className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
-                          copiedId === item.id
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                        }`}
-                        title="Copy Link"
-                      >
-                        {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                      {item.studentSheetUrl && item.studentSheetUrl.includes('http') && (
-                        <a
-                          href={item.studentSheetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-cyan-400 hover:text-cyan-300"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ATS Grade Stats Pills */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-bold ${
-                      isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-                    }`}>
-                      <Users className="w-4 h-4 text-indigo-400" />
-                      <span>{item.totalCandidates} Evaluated</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.excellentCount} Excellent</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.strongCount} Strong</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.moderateCount} Moderate</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.needsWorkCount} Needs Work</span>
-                    </div>
-
-                    <button
-                      onClick={(e) => handleDeleteAtsItem(item.id, e)}
-                      className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                      title="Delete record"
+          <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                    <th className="p-3.5">Operation Title & Event</th>
+                    <th className="p-3.5">Executed User</th>
+                    <th className="p-3.5">Date & Time</th>
+                    <th className="p-3.5">Sheet / Resume Link</th>
+                    <th className="p-3.5">ATS Rubric Breakdown</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                  {filteredAtsRecords.map((item, index) => (
+                    <tr
+                      key={item.id || index}
+                      onClick={() => setSelectedAtsRecord(item)}
+                      className={`transition cursor-pointer ${isDark ? 'hover:bg-cyan-500/10' : 'hover:bg-cyan-50/60'}`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    <div className="p-2 rounded-xl bg-cyan-600/20 group-hover:bg-cyan-600 text-cyan-400 group-hover:text-white transition">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm">{item.operationName || 'ATS Resume Check'}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            🟢 ATS Check
+                          </span>
+                          {index === 0 && !searchQuery && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-2xs">
+                              ⚡ Most Recent
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-[10px]">
+                            {getExecutorInfo(item).name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">{getExecutorInfo(item).name}</div>
+                            <div className="text-[10px] font-mono opacity-75">{getExecutorInfo(item).email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px] opacity-80">{item.dateFormatted}</td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 max-w-xs overflow-hidden">
+                          <span className="truncate font-mono text-[11px] text-slate-400">{item.studentSheetUrl}</span>
+                          <button
+                            onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
+                            className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
+                              copiedId === item.id ? 'bg-emerald-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                            title="Copy Link"
+                          >
+                            {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                          {item.studentSheetUrl && item.studentSheetUrl.includes('http') && (
+                            <a href={item.studentSheetUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-cyan-400 hover:text-cyan-300">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-200 border border-slate-700">{item.totalCandidates} Total</span>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{item.excellentCount} Excel</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{item.strongCount} Strong</span>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">{item.moderateCount} Mod</span>
+                          <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">{item.needsWorkCount} Work</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        <button
+                          onClick={(e) => handleDeleteAtsItem(item.id, e)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Delete record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedAtsRecord(item)}
+                          className="p-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white transition inline-flex items-center gap-1"
+                          title="Open ATS Results"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
@@ -777,108 +917,100 @@ export default function HistoryView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredGithubRecords.map((item, index) => (
-              <div
-                key={item.id || index}
-                onClick={() => setSelectedGithubRecord(item)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg relative overflow-hidden ${
-                  isDark
-                    ? 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-100'
-                    : 'bg-white hover:bg-slate-50/80 border-slate-200 text-slate-900 shadow-xs'
-                }`}
-              >
-                {/* Recent Tag */}
-                {index === 0 && !searchQuery && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-xs">
-                    ⚡ Most Recent GitHub Check
-                  </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1.5 flex-1 pr-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-extrabold group-hover:text-purple-400 transition">
-                        {item.operationName || 'GitHub Profile Check'}
-                      </h3>
-                      <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-purple-400" />
-                        {item.dateFormatted}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1 ${
-                        isDark ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}>
-                        👤 Executed by: {getExecutorEmail(item)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs font-mono opacity-80 overflow-hidden">
-                      <span className="truncate max-w-md text-slate-400">{item.studentSheetUrl}</span>
-                      <button
-                        onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
-                        className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
-                          copiedId === item.id
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                        }`}
-                        title="Copy Link"
-                      >
-                        {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                      {item.studentSheetUrl && item.studentSheetUrl.includes('http') && (
-                        <a
-                          href={item.studentSheetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-purple-400 hover:text-purple-300"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* GitHub Metrics Pills */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-bold ${
-                      isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-                    }`}>
-                      <Users className="w-4 h-4 text-purple-400" />
-                      <span>{item.totalCandidates} Profiles</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.excellentCount} Excellent</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.strongCount} Strong</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.moderateCount} Moderate</span>
-                    </div>
-
-                    <div className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold flex items-center gap-1">
-                      <span>{item.needsImprovementCount} Needs Work</span>
-                    </div>
-
-                    <button
-                      onClick={(e) => handleDeleteGithubItem(item.id, e)}
-                      className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                      title="Delete record"
+          <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                    <th className="p-3.5">Operation Title & Event</th>
+                    <th className="p-3.5">Executed User</th>
+                    <th className="p-3.5">Date & Time</th>
+                    <th className="p-3.5">Sheet / Profile Link</th>
+                    <th className="p-3.5">GitHub Audit Breakdown</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                  {filteredGithubRecords.map((item, index) => (
+                    <tr
+                      key={item.id || index}
+                      onClick={() => setSelectedGithubRecord(item)}
+                      className={`transition cursor-pointer ${isDark ? 'hover:bg-purple-500/10' : 'hover:bg-purple-50/60'}`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-
-                    <div className="p-2 rounded-xl bg-purple-600/20 group-hover:bg-purple-600 text-purple-400 group-hover:text-white transition">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm">{item.operationName || 'GitHub Profile Check'}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                            🐙 GitHub Check
+                          </span>
+                          {index === 0 && !searchQuery && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-2xs">
+                              ⚡ Most Recent
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-[10px]">
+                            {getExecutorInfo(item).name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">{getExecutorInfo(item).name}</div>
+                            <div className="text-[10px] font-mono opacity-75">{getExecutorInfo(item).email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px] opacity-80">{item.dateFormatted}</td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 max-w-xs overflow-hidden">
+                          <span className="truncate font-mono text-[11px] text-slate-400">{item.studentSheetUrl}</span>
+                          <button
+                            onClick={(e) => handleCopyUrl(item.id, item.studentSheetUrl, e)}
+                            className={`p-1 rounded text-[10px] font-sans flex items-center gap-1 transition ${
+                              copiedId === item.id ? 'bg-emerald-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                            title="Copy Link"
+                          >
+                            {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                          {item.studentSheetUrl && item.studentSheetUrl.includes('http') && (
+                            <a href={item.studentSheetUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-purple-400 hover:text-purple-300">
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-200 border border-slate-700">{item.totalCandidates} Total</span>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{item.excellentCount} Excel</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{item.strongCount} Strong</span>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">{item.moderateCount} Mod</span>
+                          <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">{item.needsImprovementCount} Work</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        <button
+                          onClick={(e) => handleDeleteGithubItem(item.id, e)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Delete record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedGithubRecord(item)}
+                          className="p-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white transition inline-flex items-center gap-1"
+                          title="Open GitHub Results"
+                        >
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
@@ -1177,26 +1309,181 @@ export default function HistoryView({
           <div className={`w-full max-w-3xl rounded-2xl border p-6 space-y-6 my-8 max-h-[90vh] overflow-y-auto ${
             isDark ? 'bg-slate-900 border-slate-800 text-slate-100 shadow-2xl' : 'bg-white border-slate-200 text-slate-900 shadow-xl'
           }`}>
+            {/* Modal Header */}
             <div className={`flex items-start justify-between border-b pb-4 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
               <div className="space-y-1">
-                <h3 className="text-xl font-bold">{selectedCandidateRubric.name}</h3>
-                <span className={`px-3 py-1 rounded-full border text-xs font-bold uppercase ${getGradeBadge(selectedCandidateRubric.grade)}`}>
-                  Grade: {selectedCandidateRubric.grade} ({selectedCandidateRubric.totalScore}/100)
-                </span>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-bold">{selectedCandidateRubric.name}</h3>
+                  <span className={`px-3 py-1 rounded-full border text-xs font-bold uppercase ${getGradeBadge(selectedCandidateRubric.grade)}`}>
+                    Grade: {selectedCandidateRubric.grade} ({selectedCandidateRubric.totalScore}/100)
+                  </span>
+                </div>
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{selectedCandidateRubric.email} • {selectedCandidateRubric.phone || 'N/A'}</p>
               </div>
               <button onClick={() => setSelectedCandidateRubric(null)} className={`p-1 rounded-lg transition ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-indigo-950/30 border-indigo-500/20' : 'bg-indigo-50 border-indigo-200'}`}>
-              <h4 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-cyan-500" /> Feedback Summary
+            {/* Rubric Category Breakdown Grid */}
+            {selectedCandidateRubric.breakdown && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                  <Award className="w-4 h-4" /> 100-Point Rubric Category Breakdown
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* 1. Contact Info */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-indigo-500 dark:text-indigo-400">1. Contact Info</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.contactInfo?.score || 0} / 15 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.contactInfo?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 2. Essential Sections */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-cyan-500 dark:text-cyan-400">2. Essential Sections</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.essentialSections?.score || 0} / 25 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.essentialSections?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 3. Keyword Match */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-purple-500 dark:text-purple-400">3. Keyword Match</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.keywordMatch?.score || 0} / 25 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.keywordMatch?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 4. Action Verbs & Impact */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-emerald-500 dark:text-emerald-400">4. Action Verbs & Impact</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.actionVerbsImpact?.score || 0} / 15 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.actionVerbsImpact?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 5. Formatting & Readability */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-amber-500 dark:text-amber-400">5. Formatting & Readability</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.formattingReadability?.score || 0} / 10 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.formattingReadability?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 6. ATS Parseability */}
+                  <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-rose-500 dark:text-rose-400">6. ATS Parseability</span>
+                      <span className="font-mono font-bold text-xs">{selectedCandidateRubric.breakdown.atsParseability?.score || 0} / 10 Pts</span>
+                    </div>
+                    <ul className="text-[11px] space-y-0.5 opacity-80">
+                      {(selectedCandidateRubric.breakdown.atsParseability?.details || []).map((d, i) => (
+                        <li key={i}>• {d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* General Feedback Summary Banner */}
+            <div className={`p-4 rounded-xl border space-y-2 ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-cyan-400" /> Automated ATS Rubric Evaluation Summary
               </h4>
-              <p className={`text-xs font-medium leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                {selectedCandidateRubric.feedback?.summary}
+              <p className={`text-xs leading-relaxed font-mono p-3 rounded-lg border ${
+                isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-900 font-medium'
+              }`}>
+                {selectedCandidateRubric.feedback?.summary || 'ATS Resume Rubric Evaluation Completed.'}
               </p>
             </div>
+
+            {/* OK vs NOT OK Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* OK / ঠিক আছে Card */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+              }`}>
+                <h5 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" /> ✅ OK / ঠিক আছে (Key Strengths & Passed Items)
+                </h5>
+                <ul className="space-y-2 text-xs">
+                  {selectedCandidateRubric.feedback?.strengths && selectedCandidateRubric.feedback.strengths.length > 0 ? (
+                    selectedCandidateRubric.feedback.strengths.map((str, idx) => (
+                      <li key={idx} className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-emerald-200' : 'text-emerald-950'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                        <span className="leading-snug">{str}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-emerald-200' : 'text-emerald-950'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" />
+                      <span className="leading-snug">ATS Score {selectedCandidateRubric.totalScore}/100 ({selectedCandidateRubric.grade} Grade). Valid contact & structure.</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              {/* NOT OK / কমতি আছে Card */}
+              <div className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-50 border-rose-200'
+              }`}>
+                <h5 className="text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                  <XCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" /> ❌ NOT OK / কমতি আছে (Actionable Fixes & Gaps)
+                </h5>
+                <ul className="space-y-2 text-xs">
+                  {selectedCandidateRubric.feedback?.improvements && selectedCandidateRubric.feedback.improvements.length > 0 ? (
+                    selectedCandidateRubric.feedback.improvements.map((imp, idx) => (
+                      <li key={idx} className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-rose-200' : 'text-rose-950'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                        <span className="leading-snug">{imp}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={`flex items-start gap-2.5 font-medium ${isDark ? 'text-rose-200' : 'text-rose-950'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0 mt-1.5" />
+                      <span className="leading-snug">No major formatting flaws detected. Focus on adding quantifiable achievements.</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {selectedCandidateRubric.feedback?.recommendation && (
+              <div className={`p-3.5 rounded-xl border text-xs font-bold ${
+                isDark ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300' : 'bg-cyan-50 border-cyan-200 text-cyan-900'
+              }`}>
+                📌 Recommendation: {selectedCandidateRubric.feedback.recommendation}
+              </div>
+            )}
           </div>
         </div>
       )}

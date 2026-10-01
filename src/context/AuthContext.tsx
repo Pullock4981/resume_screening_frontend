@@ -19,6 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -34,6 +35,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const BACKEND_URL = getBackendUrl();
+
+  const saveSession = (newToken: string, newUser: AuthUser) => {
+    const now = Date.now();
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('auth_token', newToken);
+    localStorage.setItem('auth_user', JSON.stringify(newUser));
+    localStorage.setItem('auth_timestamp', now.toString());
+    localStorage.setItem('auth_last_activity', now.toString());
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_timestamp');
+    localStorage.removeItem('auth_last_activity');
+  };
+
+  // 10-Minute Inactivity Auto-Logout Security (Point 5)
+  // Only logs out if user is completely inactive for 10 minutes. Active users are NEVER logged out.
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let timer: NodeJS.Timeout;
+    let lastSave = 0;
+
+    const handleUserActivity = () => {
+      const now = Date.now();
+
+      // Throttled update to localStorage every 5 seconds
+      if (now - lastSave > 5000) {
+        lastSave = now;
+        localStorage.setItem('auth_last_activity', now.toString());
+      }
+
+      if (timer) clearTimeout(timer);
+
+      // Schedule auto-logout after 10 minutes of zero activity
+      timer = setTimeout(() => {
+        const currentNow = Date.now();
+        const savedLastActivityStr = localStorage.getItem('auth_last_activity');
+        const lastActivityTime = savedLastActivityStr ? parseInt(savedLastActivityStr, 10) : now;
+        const elapsed = currentNow - lastActivityTime;
+
+        if (elapsed >= TEN_MINUTES_MS) {
+          console.warn('10 minutes of complete user inactivity detected. Auto logging out.');
+          setAuthError('Secured Auto-Logout: You were automatically logged out due to 10 minutes of inactivity.');
+          logout();
+        }
+      }, TEN_MINUTES_MS);
+    };
+
+    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
+    activityEvents.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+    // Check initial elapsed time on mount/load
+    const initialLastActivityStr = localStorage.getItem('auth_last_activity');
+    if (initialLastActivityStr) {
+      const elapsed = Date.now() - parseInt(initialLastActivityStr, 10);
+      if (elapsed >= TEN_MINUTES_MS) {
+        setAuthError('Secured Auto-Logout: You were automatically logged out due to 10 minutes of inactivity.');
+        logout();
+        return;
+      }
+    } else {
+      localStorage.setItem('auth_last_activity', Date.now().toString());
+    }
+
+    // Start initial timer
+    handleUserActivity();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, handleUserActivity));
+    };
+  }, [token, user]);
 
   // Load session from localStorage on mount & enforce 24-hour expiry
   useEffect(() => {
@@ -62,22 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
-
-  const saveSession = (newToken: string, newUser: AuthUser) => {
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('auth_token', newToken);
-    localStorage.setItem('auth_user', JSON.stringify(newUser));
-    localStorage.setItem('auth_timestamp', Date.now().toString());
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_timestamp');
-  };
 
   const login = async (email: string, password: string) => {
     setAuthError(null);

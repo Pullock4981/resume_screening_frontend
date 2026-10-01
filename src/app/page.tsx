@@ -346,15 +346,16 @@ function MainAppContent() {
         theme={theme}
         setTheme={setTheme}
         candidateCount={candidates.length}
-        historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '')).length}
-        atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
+        historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github').length}
+        atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
+        githubHistoryCount={historyRecords.filter(r => /github/i.test(r.operationName || '') || (r as any).type === 'github').length}
       />
 
       {/* Main Right Content Panel */}
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar theme={theme} setTheme={setTheme} />
 
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-[1920px] mx-auto space-y-6">
           {/* Error Banner */}
           {errorMessage && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-medium flex items-center justify-between">
@@ -439,7 +440,7 @@ function MainAppContent() {
           )}
 
           {/* TAB 3 & Admin History Routes */}
-          {(activeTab === 'history' || activeTab === 'adminLogs' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory') && (
+          {(activeTab === 'history' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory') && (
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
@@ -454,8 +455,6 @@ function MainAppContent() {
                   ? 'githubCheck'
                   : activeTab === 'adminAtsHistory'
                   ? 'atsCheck'
-                  : activeTab === 'adminLogs'
-                  ? 'activityLogs'
                   : 'screening'
               }
             />
@@ -463,9 +462,9 @@ function MainAppContent() {
 
 
           {/* TAB: Admin User Management Panel & Dashboard */}
-          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" />}
-          {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" />}
-          {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" />}
+          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" onNavigateTab={setActiveTab} />}
+          {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" onNavigateTab={setActiveTab} />}
+          {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" onNavigateTab={setActiveTab} />}
 
           {/* TAB 4: Skill Rules & ATS Dataset */}
           {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}

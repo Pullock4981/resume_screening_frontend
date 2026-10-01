@@ -32,6 +32,8 @@ export interface CandidateResult {
     mustHaveResults: RequirementResult[];
     niceToHaveResults: RequirementResult[];
     criticalMissing: string[];
+    extraSkills?: string[];
+    extraSkillsPenalty?: number;
   };
 }
 
