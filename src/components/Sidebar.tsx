@@ -149,7 +149,7 @@ export default function Sidebar({
               </div>
             </div>
             <div>
-              <h1 className="font-extrabold text-base leading-none tracking-tight">NexScanner</h1>
+              <h1 className="font-extrabold text-base leading-none tracking-tight">Placement Kit</h1>
               <span className="text-[10px] text-emerald-500 font-mono font-medium">0% AI Tokens</span>
             </div>
           </div>

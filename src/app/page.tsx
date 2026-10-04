@@ -476,7 +476,7 @@ function MainAppContent() {
         <footer className={`border-t py-4 text-center text-xs transition-colors duration-200 ${
           isDark ? 'border-slate-900 text-slate-500' : 'border-slate-200 text-slate-400'
         }`}>
-          NexScanner — 0% AI Token Deterministic Engine with Central Google Sheet Sync
+          Placement Kit — 0% AI Token Deterministic Engine with Central Google Sheet Sync
         </footer>
       </div>
 

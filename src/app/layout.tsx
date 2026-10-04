@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NexScanner — Intelligent Resume Screening Engine",
+  title: "Placement Kit — Intelligent Resume Screening Engine",
   description: "Deterministic 0% AI Token Resume Screening & ATS Rubric Evaluation System",
 };
 
