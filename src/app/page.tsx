@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
+import Sidebar, { NavigationTab } from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import InputForm from '../components/InputForm';
 import ProgressBar from '../components/ProgressBar';
@@ -14,21 +14,23 @@ import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
 import GithubCheckView from '../components/GithubCheckView';
+import NexView from '../components/NexView';
+import AiAssignmentCheckView from '../components/AiAssignmentCheckView';
 import AdminUserManagementView from '../components/AdminUserManagementView';
 import AuthView from '../components/AuthView';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { CandidateResult, AtsHistoryRecord } from '../types';
+import { CandidateResult, AtsHistoryRecord, NexViewRecord } from '../types';
 
 function MainAppContent() {
   const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'screening' | 'atsCheck' | 'githubCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory' | 'adminGithubHistory'>('screening');
+  const [activeTab, setActiveTab] = useState<NavigationTab>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
   // Route access restrictions for Admin and User
   useEffect(() => {
     if (isAuthenticated) {
       if (!isAdmin) {
-        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory'].includes(activeTab)) {
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminNexViewHistory'].includes(activeTab)) {
           setActiveTab('screening');
         }
       } else {
@@ -38,8 +40,6 @@ function MainAppContent() {
       }
     }
   }, [isAdmin, isAuthenticated]);
-
-
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
@@ -196,39 +196,35 @@ function MainAppContent() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep partial line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (!line.trim()) continue;
           try {
-            const data = JSON.parse(line.trim());
-            if (data.status === 'started' || data.status === 'processing') {
-              setProgress({
-                completed: data.completed || 0,
-                total: data.total || 0,
-                currentCandidate: data.currentCandidate || ''
+            const chunk = JSON.parse(line);
+            if (chunk.status === 'processing' && chunk.result) {
+              setCandidates(prev => {
+                const existsIdx = prev.findIndex(c => c.name === chunk.result.name && c.email === chunk.result.email);
+                if (existsIdx !== -1) {
+                  const updated = [...prev];
+                  updated[existsIdx] = chunk.result;
+                  return updated;
+                }
+                return [...prev, chunk.result];
               });
-
-              if (data.result) {
-                setCandidates(prev => {
-                  const existsIdx = prev.findIndex(c => c.name === data.result.name && c.email === data.result.email);
-                  if (existsIdx !== -1) {
-                    const updated = [...prev];
-                    updated[existsIdx] = data.result;
-                    return updated;
-                  }
-                  return [...prev, data.result];
-                });
-              }
-            } else if (data.status === 'completed') {
-              finalOutcome = data.data;
-            } else if (data.status === 'error') {
-              throw new Error(data.error || 'Screening process error occurred.');
+              setProgress({
+                completed: chunk.completed,
+                total: chunk.total,
+                currentCandidate: chunk.currentCandidate || ''
+              });
+            } else if (chunk.status === 'completed' && chunk.data) {
+              finalOutcome = chunk.data;
+            } else if (chunk.status === 'error') {
+              throw new Error(chunk.error || 'Screening processing error.');
             }
           } catch (jsonErr: any) {
-            if (jsonErr.message && jsonErr.message.includes('Screening process error')) {
-              throw jsonErr;
-            }
+            if (jsonErr.message.includes('JSON')) continue;
+            throw jsonErr;
           }
         }
       }
@@ -236,24 +232,23 @@ function MainAppContent() {
       clearTimeout(timeoutId);
 
       if (finalOutcome && finalOutcome.results) {
-        const resultsList: CandidateResult[] = finalOutcome.results;
+        const resultsList = finalOutcome.results;
         setCandidates(resultsList);
-        setProgress({ completed: resultsList.length, total: resultsList.length, currentCandidate: '' });
         setIsFinished(true);
         setIsLoading(false);
 
-        // Record history entry
+        // Record locally in history
         const now = new Date();
         const newRecord: HistoryRecord = {
-          id: Date.now().toString(),
-          operationName: formData.operationName || `Batch_${now.toLocaleDateString()}`,
+          id: `proj_${Date.now()}`,
+          operationName: formData.operationName || 'Untitled Batch',
           timestamp: now.toISOString(),
           dateFormatted: now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
           studentSheetUrl: formData.sheetUrl,
           totalCandidates: resultsList.length,
-          goodToGoCount: resultsList.filter(c => c.finalScore >= 80).length,
-          waitingListCount: resultsList.filter(c => c.finalScore >= 70 && c.finalScore < 80).length,
-          notMatchingCount: resultsList.filter(c => c.finalScore < 70).length,
+          goodToGoCount: resultsList.filter((c: CandidateResult) => c.finalScore >= 80).length,
+          waitingListCount: resultsList.filter((c: CandidateResult) => c.finalScore >= 70 && c.finalScore < 80).length,
+          notMatchingCount: resultsList.filter((c: CandidateResult) => c.finalScore < 70).length,
           candidates: resultsList
         };
 
@@ -304,6 +299,26 @@ function MainAppContent() {
   };
 
   const [atsHistoryRecords, setAtsHistoryRecords] = useState<AtsHistoryRecord[]>([]);
+  const [githubHistoryRecords, setGithubHistoryRecords] = useState<any[]>([]);
+
+  const [nexViewHistoryRecords, setNexViewHistoryRecords] = useState<NexViewRecord[]>([]);
+
+  useEffect(() => {
+    try {
+      const savedNv = localStorage.getItem('nexview_history');
+      if (savedNv) {
+        setNexViewHistoryRecords(JSON.parse(savedNv));
+      }
+    } catch (e) {}
+  }, []);
+
+
+  useEffect(() => {
+    try {
+      const savedGh = localStorage.getItem('github_check_history');
+      if (savedGh) setGithubHistoryRecords(JSON.parse(savedGh));
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     try {
@@ -315,7 +330,21 @@ function MainAppContent() {
   }, []);
 
   const handleSaveAtsRecord = (newRecord: AtsHistoryRecord) => {
-    setAtsHistoryRecords(prev => [newRecord, ...prev]);
+    setAtsHistoryRecords(prev => {
+      const updated = [newRecord, ...prev];
+      try { localStorage.setItem('ats_check_history', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    syncHistoryWithGoogleSheets();
+  };
+
+  const handleSaveGithubRecord = (newRecord: any) => {
+    setGithubHistoryRecords(prev => {
+      const updated = [newRecord, ...prev];
+      try { localStorage.setItem('github_check_history', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    syncHistoryWithGoogleSheets();
   };
 
   const isDark = theme === 'dark';
@@ -349,18 +378,21 @@ function MainAppContent() {
         historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github').length}
         atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
         githubHistoryCount={historyRecords.filter(r => /github/i.test(r.operationName || '') || (r as any).type === 'github').length}
+        nexViewHistoryCount={nexViewHistoryRecords.length}
       />
 
       {/* Main Right Content Panel */}
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar theme={theme} setTheme={setTheme} />
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-[1920px] mx-auto space-y-6">
+        <main className={`flex-1 w-full max-w-[1920px] mx-auto ${
+          activeTab === 'nexView' || activeTab === 'aiAssignmentCheck' ? 'p-0 h-[calc(100vh-65px)] overflow-hidden' : (activeTab === 'screening' ? (candidates.length > 0 ? 'p-4 sm:p-6 md:p-8 space-y-6' : 'p-3 sm:p-4 space-y-3 max-h-[calc(100vh-65px)] overflow-hidden') : 'p-4 sm:p-6 md:p-8 space-y-6')
+        }`}>
           {/* Error Banner */}
           {errorMessage && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-medium flex items-center justify-between">
-              <span>⚠️ {errorMessage}</span>
-              <button onClick={() => setErrorMessage(null)} className="hover:opacity-70">✕</button>
+              <span>Attention: {errorMessage}</span>
+              <button onClick={() => setErrorMessage(null)} className="hover:opacity-70">Close</button>
             </div>
           )}
 
@@ -420,8 +452,13 @@ function MainAppContent() {
           {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} onSaveHistoryRecord={handleSaveAtsRecord} />}
 
           {/* TAB: GitHub Profile Check (60-Point Rubric) */}
-          {activeTab === 'githubCheck' && <GithubCheckView theme={theme} />}
+          {activeTab === 'githubCheck' && <GithubCheckView theme={theme} onSaveHistoryRecord={handleSaveGithubRecord} />}
 
+          {/* TAB: NexView Tool Portal */}
+          {activeTab === 'nexView' && <NexView theme={theme} />}
+
+          {/* TAB: AI Assignment Check Portal */}
+          {activeTab === 'aiAssignmentCheck' && <AiAssignmentCheckView theme={theme} />}
 
           {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
           {activeTab === 'dashboard' && (
@@ -440,18 +477,22 @@ function MainAppContent() {
           )}
 
           {/* TAB 3 & Admin History Routes */}
-          {(activeTab === 'history' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory') && (
+          {(activeTab === 'history' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory' || activeTab === 'adminNexViewHistory') && (
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
               atsHistoryRecords={atsHistoryRecords}
+              githubHistoryRecords={githubHistoryRecords}
+              nexViewHistoryRecords={nexViewHistoryRecords}
               onSelectRecord={handleSelectHistoryRecord}
               onClearHistory={handleClearHistory}
               onDeleteRecord={handleDeleteHistoryRecord}
               onSyncHistory={syncHistoryWithGoogleSheets}
               isSyncing={isSyncing}
               defaultSubTab={
-                activeTab === 'adminGithubHistory'
+                activeTab === 'adminNexViewHistory'
+                  ? 'nexView'
+                  : activeTab === 'adminGithubHistory'
                   ? 'githubCheck'
                   : activeTab === 'adminAtsHistory'
                   ? 'atsCheck'
@@ -459,7 +500,6 @@ function MainAppContent() {
               }
             />
           )}
-
 
           {/* TAB: Admin User Management Panel & Dashboard */}
           {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" onNavigateTab={setActiveTab} />}
@@ -473,11 +513,13 @@ function MainAppContent() {
           {activeTab === 'guide' && <SetupGuideView theme={theme} />}
         </main>
 
-        <footer className={`border-t py-4 text-center text-xs transition-colors duration-200 ${
-          isDark ? 'border-slate-900 text-slate-500' : 'border-slate-200 text-slate-400'
-        }`}>
-          Placement Kit — 0% AI Token Deterministic Engine with Central Google Sheet Sync
-        </footer>
+        {activeTab !== 'nexView' && activeTab !== 'aiAssignmentCheck' && (
+          <footer className={`border-t py-4 text-center text-xs transition-colors duration-200 ${
+            isDark ? 'border-slate-900 text-slate-500' : 'border-slate-200 text-slate-400'
+          }`}>
+            Placement Kit - 0% AI Token Deterministic Engine with Central Google Sheet Sync
+          </footer>
+        )}
       </div>
 
       {/* Detail View Modal */}

@@ -21,7 +21,7 @@ export default function Navbar({ theme, setTheme }: NavbarProps) {
     }`}>
       <div className="flex items-center gap-3">
         <h2 className="text-base font-bold flex items-center gap-2">
-          Resume Screening Control Panel
+          Placement Kit Control Panel
         </h2>
       </div>
 

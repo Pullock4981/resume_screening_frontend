@@ -287,17 +287,17 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
   const bannedCount = users.filter(u => u.status === 'banned').length;
 
   // Calculate Tool Usage Statistics (Point 6: কোন tool কেমন use হচ্ছে)
-  const ghHistory = history.filter(h => h.type === 'github');
+  const ghHistory = history.filter(h => h.type === 'github' || /github/i.test(h.operationName || ''));
   const ghLogs = logs.filter(l => l.details && /github/i.test(l.details));
   const githubRuns = Math.max(ghHistory.length, ghLogs.length);
   const githubCandidates = ghHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.results ? h.results.length : 0)), 0);
 
-  const screeningHistory = history.filter(h => h.type === 'screening' || h.type === 'job');
+  const screeningHistory = history.filter(h => (h.type === 'screening' || h.type === 'job') && !/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || ''));
   const screeningLogs = logs.filter(l => l.details && /screening|job|jd/i.test(l.details));
   const screeningRuns = Math.max(screeningHistory.length, screeningLogs.length);
   const screeningCandidates = screeningHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.candidates ? h.candidates.length : 0)), 0);
 
-  const atsHistory = history.filter(h => h.type === 'ats');
+  const atsHistory = history.filter(h => h.type === 'ats' || (/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || '')));
   const atsLogs = logs.filter(l => l.details && /ats/i.test(l.details));
   const atsRuns = Math.max(atsHistory.length, atsLogs.length);
   const atsCandidates = atsHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.candidates ? h.candidates.length : 0)), 0);

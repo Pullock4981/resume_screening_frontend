@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, RefreshCw, FileCheck, Award, Sparkles, X, ChevronRight, Eye, User, Filter } from 'lucide-react';
-import { CandidateResult, AtsHistoryRecord, AtsRubricResult, GithubCheckItem } from '../types';
+import { History, Calendar, Users, CheckCircle2, Clock, XCircle, ExternalLink, Trash2, ArrowUpRight, Copy, Check, RefreshCw, FileCheck, Award, Sparkles, X, ChevronRight, Eye, User, Filter, Tv } from 'lucide-react';
+import { CandidateResult, AtsHistoryRecord, AtsRubricResult, GithubCheckItem, NexViewRecord } from '../types';
 
 const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -52,7 +52,10 @@ interface HistoryViewProps {
   onDeleteGithubRecord?: (id: string) => void;
   onSyncHistory?: () => void;
   isSyncing?: boolean;
-  defaultSubTab?: 'screening' | 'atsCheck' | 'githubCheck' | 'activityLogs';
+  nexViewHistoryRecords?: NexViewRecord[];
+  onClearNexViewHistory?: () => void;
+  onDeleteNexViewRecord?: (id: string) => void;
+  defaultSubTab?: 'screening' | 'atsCheck' | 'githubCheck' | 'nexView' | 'activityLogs';
 }
 
 import { useAuth } from '../context/AuthContext';
@@ -69,6 +72,9 @@ export default function HistoryView({
   onDeleteAtsRecord,
   onClearGithubHistory,
   onDeleteGithubRecord,
+  nexViewHistoryRecords = [],
+  onClearNexViewHistory,
+  onDeleteNexViewRecord,
   onSyncHistory,
   isSyncing = false,
   defaultSubTab
@@ -76,7 +82,7 @@ export default function HistoryView({
   const isDark = theme === 'dark';
   const { token, user, isAdmin } = useAuth();
 
-  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'githubCheck' | 'activityLogs'>(defaultSubTab || 'screening');
+  const [activeSubTab, setActiveSubTab] = useState<'screening' | 'atsCheck' | 'githubCheck' | 'nexView' | 'activityLogs'>(defaultSubTab || 'screening');
 
   const [filterByUser, setFilterByUser] = useState<'all' | 'me'>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
@@ -99,6 +105,22 @@ export default function HistoryView({
   const [localGithubRecords, setLocalGithubRecords] = useState<GithubHistoryRecord[]>(githubHistoryRecords);
   const [selectedGithubRecord, setSelectedGithubRecord] = useState<GithubHistoryRecord | null>(null);
   const [selectedCandidateGithub, setSelectedCandidateGithub] = useState<GithubCheckItem | null>(null);
+
+  // Local NexView records state sync
+  const [localNexViewRecords, setLocalNexViewRecords] = useState<NexViewRecord[]>(nexViewHistoryRecords);
+  useEffect(() => {
+    try {
+      const savedNv = localStorage.getItem('nexview_history');
+      if (savedNv) {
+        setLocalNexViewRecords(JSON.parse(savedNv));
+      } else if (nexViewHistoryRecords) {
+        setLocalNexViewRecords(nexViewHistoryRecords);
+      }
+    } catch (e) {
+      if (nexViewHistoryRecords) setLocalNexViewRecords(nexViewHistoryRecords);
+    }
+  }, [nexViewHistoryRecords?.length]);
+
 
   // Activity Audit Logs from Master Sheet Login_Logs
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
@@ -160,7 +182,7 @@ export default function HistoryView({
     }
 
     fetchActivityLogs();
-  }, [token, atsHistoryRecords?.length, githubHistoryRecords?.length]);
+  }, [token, historyRecords, historyRecords?.length, atsHistoryRecords?.length, githubHistoryRecords?.length]);
 
 
   const getExecutorEmail = (item: any) => {
@@ -190,13 +212,13 @@ export default function HistoryView({
   };
 
   // 1. Separate pure screening records from ATS & GitHub check records
-  const pureScreeningRecords = historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github');
-  const syncedAtsHistoryRecords = historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || ''));
+  const pureScreeningRecords = historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github' && (r as any).type !== 'ats');
+  const syncedAtsHistoryRecords = historyRecords.filter(r => /ats/i.test(r.operationName || '') || (r as any).type === 'ats');
   const syncedGithubRecords = historyRecords.filter(r => /github/i.test(r.operationName || '') || (r as any).type === 'github');
 
   // Sort screening history newest first
   const sortedRecords = [...pureScreeningRecords].sort((a, b) => {
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    return new Date(b.timestamp || '').getTime() - new Date(a.timestamp || '').getTime();
   });
 
   const filteredRecords = sortedRecords.filter(r => {
@@ -221,93 +243,105 @@ export default function HistoryView({
   });
 
   // 2. Convert synced ATS history records to AtsHistoryRecord shape
-  const convertedSyncedAts: AtsHistoryRecord[] = syncedAtsHistoryRecords.map(syncedRec => ({
-    id: syncedRec.id,
-    operationName: syncedRec.operationName,
-    timestamp: syncedRec.timestamp,
-    dateFormatted: syncedRec.dateFormatted,
-    studentSheetUrl: syncedRec.studentSheetUrl,
-    totalCandidates: syncedRec.totalCandidates,
-    excellentCount: syncedRec.goodToGoCount,
-    strongCount: syncedRec.waitingListCount,
-    moderateCount: 0,
-    needsWorkCount: syncedRec.notMatchingCount,
-    userEmail: (syncedRec as any).userEmail,
-    results: (syncedRec.candidates || []).map(c => ({
-      name: c.name,
-      email: c.email,
-      phone: c.phone,
-      resumeLink: c.resumeLink,
-      totalScore: c.atsScore || c.finalScore || 0,
-      grade: (c.atsScore || c.finalScore || 0) >= 85 ? 'Excellent' : (c.atsScore || c.finalScore || 0) >= 70 ? 'Strong' : (c.atsScore || c.finalScore || 0) >= 55 ? 'Moderate' : 'Needs Work',
-      gradeColor: (c.atsScore || c.finalScore || 0) >= 85 ? 'emerald' : (c.atsScore || c.finalScore || 0) >= 70 ? 'cyan' : (c.atsScore || c.finalScore || 0) >= 55 ? 'amber' : 'rose',
-      isParseable: true,
-      breakdown: {
-        contactInfo: { score: 15, max: 15, details: ['Name & Email parsed'] },
-        essentialSections: { score: 20, max: 20, details: ['Essential sections verified'] },
-        keywordMatch: { score: 25, max: 25, details: ['Skills & keywords matched'] },
-        actionVerbsImpact: { score: 15, max: 15, details: ['Impact verbs analyzed'] },
-        formattingReadability: { score: 15, max: 15, details: ['Standard layout'] },
-        atsParseability: { score: 10, max: 10, details: ['Text parseable'] }
-      },
-      feedback: {
-        summary: c.feedback || 'ATS Resume Evaluation details recorded in master sheet.',
-        strengths: ['Formatted for ATS systems'],
-        improvements: ['Keep keywords updated'],
-        recommendation: c.category || 'Reviewed'
-      }
-    }))
-  }));
+  const convertedSyncedAts: AtsHistoryRecord[] = syncedAtsHistoryRecords.map(syncedRec => {
+    const candList = (syncedRec as any).results || syncedRec.candidates || [];
+    const exc = (syncedRec as any).excellentCount !== undefined ? (syncedRec as any).excellentCount : (syncedRec.goodToGoCount || 0);
+    const str = (syncedRec as any).strongCount !== undefined ? (syncedRec as any).strongCount : (syncedRec.waitingListCount || 0);
+    const mod = (syncedRec as any).moderateCount || 0;
+    const nwk = (syncedRec as any).needsWorkCount !== undefined ? (syncedRec as any).needsWorkCount : (syncedRec.notMatchingCount || 0);
+
+    return {
+      id: syncedRec.id,
+      operationName: syncedRec.operationName,
+      timestamp: syncedRec.timestamp,
+      dateFormatted: syncedRec.dateFormatted,
+      studentSheetUrl: syncedRec.studentSheetUrl,
+      totalCandidates: syncedRec.totalCandidates || candList.length,
+      excellentCount: exc,
+      strongCount: str,
+      moderateCount: mod,
+      needsWorkCount: nwk,
+      userEmail: (syncedRec as any).userEmail,
+      results: candList.map((c: any) => ({
+        name: c.name || 'Candidate',
+        email: c.email || 'N/A',
+        phone: c.phone || 'N/A',
+        resumeLink: c.resumeLink || '#',
+        totalScore: c.atsScore || c.finalScore || 0,
+        atsScore: c.atsScore || c.finalScore || 0,
+        grade: c.category || ((c.atsScore || c.finalScore || 0) >= 80 ? 'ATS Friendly' : (c.atsScore || c.finalScore || 0) >= 60 ? 'Needs Work' : 'High Risk'),
+        feedback: c.feedback || 'ATS Resume Evaluation details recorded in master sheet.'
+      }))
+    };
+  });
 
   // 3. Convert synced GitHub history records to GithubHistoryRecord shape
-  const convertedSyncedGithub: GithubHistoryRecord[] = syncedGithubRecords.map(syncedRec => ({
-    id: syncedRec.id,
-    operationName: syncedRec.operationName,
-    timestamp: syncedRec.timestamp,
-    dateFormatted: syncedRec.dateFormatted,
-    studentSheetUrl: syncedRec.studentSheetUrl,
-    totalCandidates: syncedRec.totalCandidates,
-    excellentCount: (syncedRec as any).excellentCount || (syncedRec.candidates || []).filter(c => ((c as any).totalScore || 0) >= 50).length,
-    strongCount: (syncedRec as any).strongCount || (syncedRec.candidates || []).filter(c => ((c as any).totalScore || 0) >= 40 && ((c as any).totalScore || 0) < 50).length,
-    moderateCount: (syncedRec as any).moderateCount || (syncedRec.candidates || []).filter(c => ((c as any).totalScore || 0) >= 30 && ((c as any).totalScore || 0) < 40).length,
-    needsImprovementCount: (syncedRec as any).needsImprovementCount || (syncedRec.candidates || []).filter(c => ((c as any).totalScore || 0) < 30).length,
-    userEmail: (syncedRec as any).userEmail,
-    results: ((syncedRec as any).results || syncedRec.candidates || []).map((c: any) => ({
-      username: c.username || c.name || 'Candidate',
-      name: c.name || c.username || 'Candidate',
-      email: c.email || 'N/A',
-      phone: c.phone || 'N/A',
-      avatarUrl: c.avatarUrl || '',
-      profileUrl: c.profileUrl || c.resumeLink || '#',
-      bio: c.bio || '',
-      location: c.location || '',
-      publicRepos: c.publicRepos || 0,
-      followers: c.followers || 0,
-      following: 0,
-      totalScore: c.totalScore !== undefined ? c.totalScore : Math.round(((c.finalScore || 0) / 100) * 60),
-      maxScore: 60,
-      percentage: c.percentage !== undefined ? c.percentage : (c.finalScore || 0),
-      grade: c.grade || c.category || 'Reviewed',
-      gradeColor: c.gradeColor || (c.totalScore >= 50 ? 'emerald' : c.totalScore >= 40 ? 'cyan' : c.totalScore >= 30 ? 'amber' : 'rose'),
-      breakdown: c.breakdown || [],
-      topRepos: c.topRepos || []
-    }))
-  }));
+  const convertedSyncedGithub: GithubHistoryRecord[] = syncedGithubRecords.map(syncedRec => {
+    const candList = (syncedRec as any).results || syncedRec.candidates || [];
+    const exc = (syncedRec as any).excellentCount !== undefined ? (syncedRec as any).excellentCount : (syncedRec.goodToGoCount || 0);
+    const str = (syncedRec as any).strongCount !== undefined ? (syncedRec as any).strongCount : (syncedRec.waitingListCount || 0);
+    const mod = (syncedRec as any).moderateCount || 0;
+    const nwk = (syncedRec as any).needsImprovementCount !== undefined ? (syncedRec as any).needsImprovementCount : (syncedRec.notMatchingCount || 0);
 
-  // Combine local ATS records: prefer remote Google Sheet synced records by unique ID
+    return {
+      id: syncedRec.id,
+      operationName: syncedRec.operationName,
+      timestamp: syncedRec.timestamp,
+      dateFormatted: syncedRec.dateFormatted,
+      studentSheetUrl: syncedRec.studentSheetUrl,
+      totalCandidates: syncedRec.totalCandidates || candList.length,
+      excellentCount: exc,
+      strongCount: str,
+      moderateCount: mod,
+      needsImprovementCount: nwk,
+      userEmail: (syncedRec as any).userEmail,
+      results: candList.map((c: any) => ({
+        username: c.username || c.name || 'Candidate',
+        name: c.name || c.username || 'Candidate',
+        email: c.email || 'N/A',
+        phone: c.phone || 'N/A',
+        avatarUrl: c.avatarUrl || '',
+        profileUrl: c.profileUrl || c.resumeLink || '#',
+        publicRepos: c.publicRepos || 0,
+        followers: c.followers || 0,
+        totalScore: c.totalScore !== undefined ? c.totalScore : Math.round(((c.finalScore || 0) / 100) * 60),
+        maxScore: 60,
+        percentage: c.percentage !== undefined ? c.percentage : (c.finalScore || 0),
+        grade: c.grade || c.category || 'Reviewed',
+        presentItems: c.presentItems || '',
+        missingItems: c.missingItems || '',
+        breakdown: c.breakdown || [],
+        topRepos: c.topRepos || []
+      }))
+    };
+  });
+
+  const getCleanKey = (name: string, dateFormatted?: string) => {
+    const cleanName = (name || '')
+      .replace(/\[GitHub Check\]/gi, '')
+      .replace(/\[ATS Check\]/gi, '')
+      .replace(/\(by [^)]+\)/gi, '')
+      .trim()
+      .toLowerCase();
+    const cleanDate = (dateFormatted || '').trim().toLowerCase();
+    return cleanDate ? (cleanName + '___' + cleanDate) : cleanName;
+  };
+
+  // Combine ATS records: prefer remote Google Sheet synced records by clean title + date or ID
   const atsRecordMap = new Map<string, AtsHistoryRecord>();
   convertedSyncedAts.forEach(r => {
-    if (r.id) atsRecordMap.set(r.id, r);
+    const key = getCleanKey(r.operationName, r.dateFormatted) || r.id;
+    atsRecordMap.set(key, r);
   });
   localAtsRecords.forEach(r => {
-    const key = r.id || `${r.operationName}_${r.timestamp}`;
+    const key = getCleanKey(r.operationName, r.dateFormatted) || r.id;
     if (!atsRecordMap.has(key)) {
       atsRecordMap.set(key, r);
     }
   });
 
   const allAtsRecordsCombined = Array.from(atsRecordMap.values());
-  const sortedAtsRecords = [...allAtsRecordsCombined].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const sortedAtsRecords = [...allAtsRecordsCombined].sort((a, b) => new Date(b.timestamp || b.dateFormatted || 0).getTime() - new Date(a.timestamp || a.dateFormatted || 0).getTime());
   const filteredAtsRecords = sortedAtsRecords.filter(r => {
     const matchesQuery =
       r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -329,20 +363,58 @@ export default function HistoryView({
     return matchesQuery && matchesDate && matchesUser && matchesStatus;
   });
 
-  // Combine local GitHub records: prefer remote Google Sheet synced records by unique ID
+  // Combine GitHub records: prefer remote Google Sheet synced records by clean title + date or ID
   const githubRecordMap = new Map<string, GithubHistoryRecord>();
   convertedSyncedGithub.forEach(r => {
-    if (r.id) githubRecordMap.set(r.id, r);
+    const key = getCleanKey(r.operationName, r.dateFormatted) || r.id;
+    githubRecordMap.set(key, r);
   });
   localGithubRecords.forEach(r => {
-    const key = r.id || `${r.operationName}_${r.timestamp}`;
+    const key = getCleanKey(r.operationName, r.dateFormatted) || r.id;
     if (!githubRecordMap.has(key)) {
       githubRecordMap.set(key, r);
     }
   });
 
   const allGithubRecordsCombined = Array.from(githubRecordMap.values());
-  const sortedGithubRecords = [...allGithubRecordsCombined].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const sortedGithubRecords = [...allGithubRecordsCombined].sort((a, b) => new Date(b.timestamp || b.dateFormatted || 0).getTime() - new Date(a.timestamp || a.dateFormatted || 0).getTime());
+
+// Combine local & audit NexView records
+  const nexViewAuditRecords: NexViewRecord[] = activityLogs
+    .filter(l => /nexview/i.test(l.details || '') || /nexview/i.test(l.action || ''))
+    .map(l => ({
+      id: l.id || `nv_${Date.now()}`,
+      operationName: 'NexView Live Portal Visit',
+      timestamp: l.loginTime || new Date().toISOString(),
+      dateFormatted: l.loginTime || 'Recent',
+      targetUrl: 'https://interview-feedback-frontend.vercel.app/dashboard',
+      userEmail: l.email || 'user@system.com',
+      status: 'Active'
+    }));
+
+  const nexViewRecordMap = new Map<string, NexViewRecord>();
+  localNexViewRecords.forEach(r => {
+    if (r.id) nexViewRecordMap.set(r.id, r);
+  });
+  nexViewAuditRecords.forEach(r => {
+    if (r.id && !nexViewRecordMap.has(r.id)) {
+      nexViewRecordMap.set(r.id, r);
+    }
+  });
+
+  const allNexViewRecordsCombined = Array.from(nexViewRecordMap.values());
+  const sortedNexViewRecords = [...allNexViewRecordsCombined].sort((a, b) => new Date(b.timestamp || '').getTime() - new Date(a.timestamp || '').getTime());
+  const filteredNexViewRecords = sortedNexViewRecords.filter(r => {
+    const matchesQuery =
+      r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.dateFormatted.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.targetUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.userEmail || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDate = matchesDateRange(r.timestamp);
+    const matchesUser = matchesUserFilter(r);
+    return matchesQuery && matchesDate && matchesUser;
+  });
+
   const filteredGithubRecords = sortedGithubRecords.filter(r => {
     const matchesQuery =
       r.operationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -517,12 +589,12 @@ export default function HistoryView({
       </div>
 
       {/* Sub-tab Navigation Switcher */}
-      <div className={`flex border-b gap-6 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+      <div className={`flex border-b gap-3 overflow-x-auto pb-0.5 ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
         <button
           onClick={() => setActiveSubTab('screening')}
-          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+          className={`px-3.5 py-2.5 text-xs font-bold border-b-2 rounded-t-xl transition flex items-center gap-2 ${
             activeSubTab === 'screening'
-              ? 'border-indigo-500 text-indigo-500'
+              ? isDark ? 'border-indigo-400 text-indigo-300 font-bold bg-indigo-500/10' : 'border-indigo-600 text-indigo-600 font-bold'
               : isDark
               ? 'border-transparent text-slate-400 hover:text-slate-200'
               : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -534,9 +606,9 @@ export default function HistoryView({
 
         <button
           onClick={() => setActiveSubTab('atsCheck')}
-          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+          className={`px-3.5 py-2.5 text-xs font-bold border-b-2 rounded-t-xl transition flex items-center gap-2 ${
             activeSubTab === 'atsCheck'
-              ? 'border-indigo-500 text-indigo-500'
+              ? isDark ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-500/10' : 'border-cyan-600 text-cyan-600 font-bold'
               : isDark
               ? 'border-transparent text-slate-400 hover:text-slate-200'
               : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -548,9 +620,9 @@ export default function HistoryView({
 
         <button
           onClick={() => setActiveSubTab('githubCheck')}
-          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+          className={`px-3.5 py-2.5 text-xs font-bold border-b-2 rounded-t-xl transition flex items-center gap-2 ${
             activeSubTab === 'githubCheck'
-              ? 'border-indigo-500 text-indigo-500'
+              ? isDark ? 'border-purple-400 text-purple-300 font-bold bg-purple-500/10' : 'border-purple-600 text-purple-600 font-bold'
               : isDark
               ? 'border-transparent text-slate-400 hover:text-slate-200'
               : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -561,10 +633,24 @@ export default function HistoryView({
         </button>
 
         <button
+          onClick={() => setActiveSubTab('nexView')}
+          className={`px-3.5 py-2.5 text-xs font-bold border-b-2 rounded-t-xl transition flex items-center gap-2 ${
+            activeSubTab === 'nexView'
+              ? isDark ? 'border-purple-400 text-purple-300 font-bold bg-purple-500/10' : 'border-purple-600 text-purple-600 font-bold'
+              : isDark
+              ? 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Tv className="w-4 h-4 text-purple-400" />
+          <span>NexView Portal History ({sortedNexViewRecords.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('activityLogs')}
-          className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 ${
+          className={`px-3.5 py-2.5 text-xs font-bold border-b-2 rounded-t-xl transition flex items-center gap-2 ${
             activeSubTab === 'activityLogs'
-              ? 'border-indigo-500 text-indigo-500'
+              ? isDark ? 'border-indigo-400 text-indigo-300 font-bold bg-indigo-500/10' : 'border-indigo-600 text-indigo-600 font-bold'
               : isDark
               ? 'border-transparent text-slate-400 hover:text-slate-200'
               : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -682,7 +768,125 @@ export default function HistoryView({
         </div>
       </div>
 
-      {/* SUB-TAB 1: Job Screening History */}
+      
+      {/* SUB-TAB: NexView Portal History */}
+      {activeSubTab === 'nexView' && (
+        filteredNexViewRecords.length === 0 ? (
+          <div className={`p-12 text-center rounded-2xl border ${
+            isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'
+          }`}>
+            <Tv className="w-12 h-12 mx-auto mb-3 opacity-30 text-purple-400" />
+            <h3 className="text-base font-bold text-slate-300">No NexView Launch History Found</h3>
+            <p className="text-xs mt-1 max-w-sm mx-auto">
+              Launch or visit the NexView Tool tab to automatically record launch history entries.
+            </p>
+          </div>
+        ) : (
+          <div className={`border rounded-2xl overflow-hidden ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
+                    <th className="p-3.5">Operation Title & Event</th>
+                    <th className="p-3.5">Executed User</th>
+                    <th className="p-3.5">Date & Time</th>
+                    <th className="p-3.5">Target Live URL</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                  {filteredNexViewRecords.map((item, index) => (
+                    <tr
+                      key={item.id || index}
+                      className={`transition ${isDark ? 'hover:bg-purple-500/10' : 'hover:bg-purple-50/60'}`}
+                    >
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm">{item.operationName}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            NexView Portal
+                          </span>
+                          {index === 0 && !searchQuery && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-2xs">
+                              Most Recent
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-[10px]">
+                            {getExecutorInfo(item).name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs">{getExecutorInfo(item).name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{getExecutorInfo(item).email}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3.5 font-mono text-slate-400">
+                        {item.dateFormatted}
+                      </td>
+
+                      <td className="p-3.5 max-w-xs">
+                        <a
+                          href={item.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-400 font-mono hover:underline text-[11px] truncate block"
+                        >
+                          {item.targetUrl}
+                        </a>
+                      </td>
+
+                      <td className="p-3.5">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Active Live
+                        </span>
+                      </td>
+
+                      <td className="p-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <a
+                            href={item.targetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`p-1.5 rounded-lg border transition ${
+                              isDark ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20' : 'bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100'
+                            }`}
+                            title="Open NexView in new tab"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          {onDeleteNexViewRecord && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNexViewRecord(item.id);
+                              }}
+                              className={`p-1.5 rounded-lg border transition ${
+                                isDark ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                              }`}
+                              title="Delete record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
+
+{/* SUB-TAB 1: Job Screening History */}
       {activeSubTab === 'screening' && (
         filteredRecords.length === 0 ? (
           <div className={`p-12 text-center rounded-2xl border ${
@@ -699,7 +903,7 @@ export default function HistoryView({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
                     <th className="p-3.5">Operation Title & Event</th>
                     <th className="p-3.5">Executed User</th>
                     <th className="p-3.5">Date & Time</th>
@@ -809,7 +1013,7 @@ export default function HistoryView({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
                     <th className="p-3.5">Operation Title & Event</th>
                     <th className="p-3.5">Executed User</th>
                     <th className="p-3.5">Date & Time</th>
@@ -921,7 +1125,7 @@ export default function HistoryView({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
                     <th className="p-3.5">Operation Title & Event</th>
                     <th className="p-3.5">Executed User</th>
                     <th className="p-3.5">Date & Time</th>
@@ -1078,7 +1282,7 @@ export default function HistoryView({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                    <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
                       <th className="p-3.5">Activity Timestamp</th>
                       <th className="p-3.5">Operation Type</th>
                       <th className="p-3.5">Executed Action Details</th>
@@ -1170,7 +1374,7 @@ export default function HistoryView({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                  <tr className={`border-b uppercase text-[10px] font-bold ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-50/80 border-slate-200/80 text-slate-500 font-semibold'}`}>
                     <th className="p-3.5">User Email</th>
                     <th className="p-3.5">Role</th>
                     <th className="p-3.5">Activity Timestamp</th>
@@ -1263,7 +1467,7 @@ export default function HistoryView({
             <div className={`overflow-x-auto border rounded-xl ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700 font-semibold'}`}>
+                  <tr className={`border-b uppercase text-[10px] ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-100 border-slate-200 text-slate-700 font-semibold'}`}>
                     <th className="p-3">Candidate Name</th>
                     <th className="p-3">Contact Info</th>
                     <th className="p-3">ATS Score</th>
@@ -1514,7 +1718,7 @@ export default function HistoryView({
             <div className={`overflow-x-auto border rounded-xl ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className={`border-b uppercase text-[10px] ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700 font-semibold'}`}>
+                  <tr className={`border-b uppercase text-[10px] ${isDark ? 'bg-[#0b0f19] border-slate-800/80 text-slate-300 font-semibold' : 'bg-slate-100 border-slate-200 text-slate-700 font-semibold'}`}>
                     <th className="p-3">Candidate / Profile</th>
                     <th className="p-3 text-center">Total Score (out of 60)</th>
                     <th className="p-3 text-center">Grade</th>

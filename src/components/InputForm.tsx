@@ -89,12 +89,12 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
   };
 
   return (
-    <div className={`w-full border backdrop-blur-xl rounded-2xl p-6 transition-colors duration-200 ${
+    <div className={`w-full border backdrop-blur-xl rounded-2xl p-3.5 transition-colors duration-200 ${
       isDark
         ? 'bg-slate-900/60 border-slate-800 text-slate-100 shadow-2xl'
         : 'bg-white border-slate-200 text-slate-900 shadow-md'
     }`}>
-      <h2 className="text-base font-bold mb-4 flex items-center justify-between">
+      <h2 className="text-base font-bold mb-2 flex items-center justify-between">
         <span className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-indigo-500" />
           Screening Input Configuration
@@ -110,12 +110,12 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
         )}
       </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-2.5">
         {/* Top Inputs: 3 Key Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
           {/* Operation / Job Name */}
           <div>
-            <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-2 ${
+            <label className={`block text-xs font-semibold mb-1 flex items-center gap-2 ${
               isDark ? 'text-slate-300' : 'text-slate-700'
             }`}>
               <Briefcase className="w-4 h-4 text-indigo-400" />
@@ -126,7 +126,7 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
               placeholder="e.g. Node.js Developer Batch"
               value={operationName}
               onChange={(e) => setOperationName(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+              className={`w-full border rounded-xl px-4 py-1 px-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
                 isDark
                   ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500'
                   : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
@@ -244,7 +244,7 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
             </div>
             <textarea
               required
-              rows={4}
+              rows={2.5}
               placeholder="Paste Job Description text here..."
               value={jdText}
               onChange={handleJdChange}
@@ -259,7 +259,7 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
         {/* Min Experience & Skills Row */}
         <div className="space-y-4">
           {/* Min Experience Field */}
-          <div className={`p-4 rounded-xl border flex items-center justify-between ${
+          <div className={`p-2 px-3 rounded-lg border flex items-center justify-between ${
             isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
           }`}>
             <div className="flex items-center gap-2.5">
@@ -292,13 +292,13 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
           {/* Skills Tag Input */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Must Have Skills */}
-          <div className={`p-4 rounded-xl border ${
+          <div className={`p-2 rounded-lg border ${
             isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
           }`}>
             <label className="block text-xs font-semibold text-rose-500 mb-2">
               Must-Have Skills (Critical Requirement)
             </label>
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-1.5">
               <input
                 type="text"
                 placeholder="e.g. React.js"
@@ -375,7 +375,7 @@ export default function InputForm({ onStartScreening, isLoading, theme = 'dark' 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-2.5 px-4 text-xs sm:text-sm rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {isLoading ? (
             <>

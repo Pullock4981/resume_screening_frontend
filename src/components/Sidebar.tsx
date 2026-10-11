@@ -16,7 +16,9 @@ import {
   LogOut,
   User,
   Users,
-  Clock
+  Clock,
+  Tv,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,16 +28,35 @@ const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+export type NavigationTab =
+  | 'screening'
+  | 'atsCheck'
+  | 'githubCheck'
+  | 'aiAssignmentCheck'
+  | 'nexView'
+  | 'dashboard'
+  | 'history'
+  | 'dictionary'
+  | 'guide'
+  | 'admin'
+  | 'adminDashboard'
+  | 'userManagement'
+  | 'adminLogs'
+  | 'adminScreeningHistory'
+  | 'adminAtsHistory'
+  | 'adminGithubHistory'
+  | 'adminNexViewHistory';
 
 interface SidebarProps {
-  activeTab: 'screening' | 'atsCheck' | 'githubCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory' | 'adminGithubHistory';
-  setActiveTab: (tab: 'screening' | 'atsCheck' | 'githubCheck' | 'dashboard' | 'history' | 'dictionary' | 'guide' | 'admin' | 'adminDashboard' | 'userManagement' | 'adminLogs' | 'adminScreeningHistory' | 'adminAtsHistory' | 'adminGithubHistory') => void;
+  activeTab: NavigationTab;
+  setActiveTab: (tab: NavigationTab) => void;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   candidateCount: number;
   historyCount?: number;
   atsHistoryCount?: number;
   githubHistoryCount?: number;
+  nexViewHistoryCount?: number;
 }
 
 export default function Sidebar({
@@ -46,7 +67,8 @@ export default function Sidebar({
   candidateCount,
   historyCount = 0,
   atsHistoryCount = 0,
-  githubHistoryCount = 0
+  githubHistoryCount = 0,
+  nexViewHistoryCount = 0
 }: SidebarProps) {
   const isDark = theme === 'dark';
   const { user, isAdmin, logout } = useAuth();
@@ -87,9 +109,20 @@ export default function Sidebar({
       label: 'GitHub Checking History',
       icon: GithubIcon,
       badge: githubHistoryCount > 0 ? githubHistoryCount : null
+    },
+    {
+      id: 'adminNexViewHistory' as const,
+      label: 'NexView Portal History',
+      icon: Tv,
+      badge: nexViewHistoryCount > 0 ? nexViewHistoryCount : null
+    },
+    {
+      id: 'aiAssignmentCheck' as const,
+      label: 'AI Assignment Check',
+      icon: Sparkles,
+      badge: 'Live'
     }
   ];
-
 
   const userMenuItems = [
     {
@@ -111,6 +144,18 @@ export default function Sidebar({
       badge: null
     },
     {
+      id: 'aiAssignmentCheck' as const,
+      label: 'AI Assignment Check',
+      icon: Sparkles,
+      badge: 'Live'
+    },
+    {
+      id: 'nexView' as const,
+      label: 'NexView Tool',
+      icon: Tv,
+      badge: 'Live'
+    },
+    {
       id: 'history' as const,
       label: 'Screening History',
       icon: History,
@@ -129,7 +174,6 @@ export default function Sidebar({
       badge: null
     }
   ];
-
 
   return (
     <aside
@@ -187,7 +231,9 @@ export default function Sidebar({
 
                   {item.badge !== null && (
                     <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                      isActive
+                      item.id === 'nexView' || item.id === 'aiAssignmentCheck'
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                        : isActive
                         ? 'bg-indigo-500 text-white'
                         : isDark
                         ? 'bg-slate-800 text-slate-300'
@@ -246,7 +292,6 @@ export default function Sidebar({
 
       {/* Sidebar Footer & User Auth Box */}
       <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
-        {/* User Account Box */}
         {user && (
           <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
             isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
@@ -271,7 +316,6 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Light / Dark Mode Toggle */}
         <button
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
@@ -294,4 +338,3 @@ export default function Sidebar({
     </aside>
   );
 }
-

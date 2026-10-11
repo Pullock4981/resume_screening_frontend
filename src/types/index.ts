@@ -1,157 +1,127 @@
-export interface RequirementResult {
-  name: string;
-  status: 'Strong' | 'Moderate' | 'Missing';
-  reason: string;
-}
-
-export interface CandidateResult {
-  name: string;
-  email: string;
-  phone: string;
-  resumeLink: string;
-  matchScore: number;
-  atsScore: number;
-  finalScore: number;
-  category: string;
-  criticalFlag: boolean;
-  feedback: string;
-  atsDetails: {
-    atsScore: number;
-    isParseable: boolean;
-    warnings: string[];
-    checklist?: Array<{ name: string; passed: boolean; detail: string }>;
-    details?: {
-      hasEmail: boolean;
-      hasPhone: boolean;
-      hasLinkedInOrWeb: boolean;
-      sectionHeadersFound: string[];
-      wordCount: number;
-    };
-  };
-  matchingResults: {
-    mustHaveResults: RequirementResult[];
-    niceToHaveResults: RequirementResult[];
-    criticalMissing: string[];
-    extraSkills?: string[];
-    extraSkillsPenalty?: number;
-  };
-}
-
-export interface ScreeningData {
-  spreadsheetId: string;
-  total: number;
-  results: CandidateResult[];
-  extractedRequirements: {
-    mustHave: string[];
-    niceToHave: string[];
-  };
-}
-
-export interface AtsRubricCategory {
+export interface CategoryScore {
   score: number;
   max: number;
-  details: string[];
-  matchedKeywords?: string[];
-  missingKeywords?: string[];
+  label: string;
 }
 
-export interface AtsRubricResult {
-  name: string;
-  email: string;
-  phone: string;
-  resumeLink: string;
-  totalScore: number;
-  grade: 'Excellent' | 'Strong' | 'Moderate' | 'Needs Work' | 'Poor';
-  gradeColor: 'emerald' | 'cyan' | 'amber' | 'orange' | 'rose';
-  isParseable: boolean;
-  breakdown: {
-    contactInfo: AtsRubricCategory;
-    essentialSections: AtsRubricCategory;
-    keywordMatch: AtsRubricCategory;
-    actionVerbsImpact: AtsRubricCategory;
-    formattingReadability: AtsRubricCategory;
-    atsParseability: AtsRubricCategory;
-  };
-  feedback: {
-    summary: string;
-    strengths: string[];
-    improvements: string[];
-    recommendation: string;
-  };
+export interface Recommendation {
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'GOOD';
+  title: string;
+  message: string;
 }
+
+export interface AtsResult {
+  success?: boolean;
+  ats_score: number;
+  parsing_status?: string;
+  score?: number;
+  totalScore?: number;
+  grade?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  breakdown?: any;
+  feedback?: any;
+  category_scores?: Record<string, CategoryScore>;
+  contact?: {
+    name?: string;
+    email?: string;
+    email_valid?: boolean;
+    phone?: string;
+    phone_present?: boolean;
+    linkedin_url?: string;
+    github_url?: string;
+    portfolio_url?: string;
+  };
+  unnecessary_personal_info?: string[];
+  reading_order_issues?: Array<{ severity: string; message: string }>;
+  section_content_relationships?: Array<{ severity: string; message: string }>;
+  bullet_analysis?: {
+    total: number;
+    strong: number;
+    weak: number;
+    metric_count: number;
+    score: number;
+    weak_phrases_found: string[];
+  };
+  skills_analysis?: {
+    detected: string[];
+    rating_risk?: boolean;
+  };
+  job_match?: {
+    title_match?: boolean;
+    score?: number;
+    matched_keywords?: string[];
+    missing_keywords?: string[];
+    keyword_stuffing_warning?: boolean;
+  };
+  formatting_risks?: Array<{ level: string; message: string }>;
+  recommendations?: Recommendation[];
+  [key: string]: any;
+}
+
+export type AtsRubricResult = AtsResult;
+
+export interface CandidateResult {
+  id?: string;
+  name?: string;
+  email?: string;
+  ats_score?: number;
+  github_score?: number;
+  combined_score?: number;
+  url?: string;
+  created_at?: string;
+  [key: string]: any;
+}
+
+export interface Candidate extends CandidateResult {}
 
 export interface AtsHistoryRecord {
   id: string;
-  operationName: string;
-  timestamp: string;
-  dateFormatted: string;
-  studentSheetUrl: string;
-  totalCandidates: number;
-  excellentCount: number;
-  strongCount: number;
-  moderateCount: number;
-  needsWorkCount: number;
-  results: AtsRubricResult[];
+  candidate_name?: string;
+  resume_url?: string;
+  ats_score?: number;
+  timestamp?: string;
+  created_at?: string;
+  details?: any;
+  [key: string]: any;
+}
+
+export interface NexViewRecord {
+  id: string;
+  title?: string;
+  url?: string;
+  timestamp?: string;
+  created_at?: string;
+  [key: string]: any;
 }
 
 export interface AuthUser {
   id: string;
-  name: string;
-  email: string;
+  username: string;
+  name?: string;
+  email?: string;
+  status?: string;
   role: 'admin' | 'user';
-  status: 'active' | 'banned';
-  createdAt?: string;
+  token?: string;
+  [key: string]: any;
 }
 
 export interface LoginAuditLog {
   id: string;
-  email: string;
-  role: string;
-  loginTime: string;
-  details: string;
-}
-
-export interface GithubBreakdownItem {
-  title: string;
-  score: number;
-  maxScore: number;
-  passed: boolean;
-  detail: string;
-}
-
-export interface GithubTopRepo {
-  name: string;
-  url: string;
-  description: string;
-  language: string;
-  homepage?: string;
-  stars: number;
+  username: string;
+  ip?: string;
+  timestamp: string;
+  status: 'SUCCESS' | 'FAILED';
 }
 
 export interface GithubCheckItem {
-  username: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  avatarUrl: string;
-  profileUrl: string;
-  bio: string;
-  location: string;
-  publicRepos: number;
-  followers: number;
-  following: number;
-  totalScore: number;
-  maxScore: number; // 60
-  percentage: number;
-  grade: string;
-  gradeColor: 'emerald' | 'cyan' | 'amber' | 'rose';
-  breakdown: GithubBreakdownItem[];
-  topRepos: GithubTopRepo[];
+  id: string;
+  repo_name?: string;
+  url?: string;
+  score?: number;
+  stars?: number;
+  forks?: number;
+  commits?: number;
+  [key: string]: any;
 }
-
-export interface GithubCheckData {
-  total: number;
-  results: GithubCheckItem[];
-}
-
-
