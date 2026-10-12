@@ -205,16 +205,17 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
           : 'bg-white border-slate-200 text-slate-900 shadow-md'
       }`}>
         <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <GithubIcon size={240} className="text-purple-400" />
+          <GithubIcon size={240} className={isDark ? 'text-indigo-500/20' : 'text-indigo-600/15'} />
         </div>
 
-
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-4">
+          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-4 border ${
+            isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+          }`}>
             <UserCheck size={14} /> 60-Point Standard GitHub Profile & Repo Rubric
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
-            GitHub Profile <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">Auditor</span>
+            GitHub Profile <span className="text-indigo-600 dark:text-indigo-400">Auditor</span>
           </h1>
           <p className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             Evaluate candidate GitHub profiles against 15 quantitative rubric criteria (Profile picture, Bio, Pinned Repos, Tech Stack, README quality, Live Links, and Stats).
@@ -230,7 +231,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                Candidate Sheet URL or GitHub Profile URL / Username <span className="text-purple-400">*</span>
+                Candidate Sheet URL or GitHub Profile URL / Username <span className="text-indigo-600 dark:text-indigo-400">*</span>
               </label>
               <div className="relative">
                 <GithubIcon size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -243,18 +244,18 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                   required
                   className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm transition-all outline-none ${
                     isDark
-                      ? 'bg-slate-800/80 border-slate-700 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
-                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                      ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
                   }`}
                 />
               </div>
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 Paste a Google Sheet link or a single candidate GitHub profile link/username.
               </p>
             </div>
 
             <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                 Operation / Batch Name (Optional)
               </label>
               <input
@@ -264,11 +265,11 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                 placeholder="e.g. MERN Batch 2026 GitHub Check"
                 className={`w-full px-4 py-3 rounded-xl border text-sm transition-all outline-none ${
                   isDark
-                    ? 'bg-slate-800/80 border-slate-700 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
-                    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                    ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                    : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
                 }`}
               />
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 Identifies this batch run in history and Google Sheets.
               </p>
             </div>
@@ -276,14 +277,14 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
 
           {/* Master Central Sheet Url (System Locked) */}
           <div className={`p-4 rounded-xl border ${
-            isDark ? 'bg-slate-800/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+            isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
           }`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                   <Lock size={12} /> Master Central Google Sheet (Admin Synchronized)
                 </span>
-                <p className={`text-xs mt-1 font-mono truncate max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className={`text-xs mt-1 font-mono truncate max-w-xl ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   {masterSheetUrl}
                 </p>
               </div>
@@ -293,10 +294,10 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                 onClick={handleCopyMasterUrl}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   copiedMasterUrl
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-emerald-600 text-white'
                     : isDark
-                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                      : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
                 }`}
               >
                 {copiedMasterUrl ? <Check size={14} /> : <Copy size={14} />}
@@ -308,10 +309,10 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2.5 ${
+            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-md transition-all duration-200 flex items-center justify-center gap-2.5 ${
               isLoading
-                ? 'bg-purple-800 opacity-70 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 hover:shadow-purple-500/25 active:scale-[0.99]'
+                ? 'bg-indigo-800 opacity-70 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-indigo-600/30'
             }`}
           >
             {isLoading ? (
@@ -356,7 +357,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
             <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Scanned</div>
-            <div className="text-2xl font-black mt-1 text-purple-400">{results.length}</div>
+            <div className="text-2xl font-black mt-1 text-indigo-600 dark:text-indigo-400">{results.length}</div>
             <div className="text-xs text-slate-500 mt-1">Candidates</div>
           </div>
 
@@ -370,10 +371,10 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
 
           <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
             <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Strong (40-49)</div>
-            <div className="text-2xl font-black mt-1 text-cyan-400">
+            <div className="text-2xl font-black mt-1 text-indigo-600 dark:text-indigo-400">
               {results.filter(r => (r.totalScore || 0) >= 40 && (r.totalScore || 0) < 50).length}
             </div>
-            <div className="text-xs text-cyan-500 mt-1">Good Setup</div>
+            <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Good Setup</div>
           </div>
 
           <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
@@ -391,9 +392,9 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
         <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-md'}`}>
           <div className={`p-4 sm:p-6 border-b flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
             <h3 className={`font-bold text-base flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Table size={18} className="text-purple-500" /> Candidate GitHub Evaluation Results
+              <Table size={18} className="text-indigo-600 dark:text-indigo-400" /> Candidate GitHub Evaluation Results
             </h3>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${isDark ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-700 border border-purple-200'}`}>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${isDark ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
               Sorted by Total Score
             </span>
           </div>
@@ -416,9 +417,9 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {res.avatarUrl ? (
-                          <img src={res.avatarUrl} alt={res.username} className="w-9 h-9 rounded-full border border-purple-500/30 object-cover" />
+                          <img src={res.avatarUrl} alt={res.username} className="w-9 h-9 rounded-full border border-indigo-500/30 object-cover" />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-purple-600/20 flex items-center justify-center font-bold text-purple-500">
+                          <div className="w-9 h-9 rounded-full bg-indigo-600/20 flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400">
                             {(res.name || res.username || 'G').charAt(0)}
                           </div>
                         )}
@@ -429,7 +430,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                               href={res.profileUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-slate-400 hover:text-purple-500 inline-flex items-center"
+                              className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 inline-flex items-center"
                             >
                               <ExternalLink size={12} />
                             </a>
@@ -441,7 +442,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
 
                     <td className="py-3 px-4 text-center">
                       <div className={`inline-flex items-center gap-1 font-extrabold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        <span className="text-purple-500">{res.totalScore}</span>
+                        <span className="text-indigo-600 dark:text-indigo-400">{res.totalScore}</span>
                         <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>/ 60</span>
                       </div>
                       <div className={`text-[10px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{res.percentage}%</div>
@@ -451,8 +452,8 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                       <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
                         res.gradeColor === 'emerald'
                           ? isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : res.gradeColor === 'cyan'
-                          ? isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                          : res.gradeColor === 'cyan' || res.gradeColor === 'indigo'
+                          ? isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                           : res.gradeColor === 'amber'
                           ? isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200'
                           : isDark ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-rose-50 text-rose-700 border border-rose-200'
@@ -474,8 +475,8 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                         onClick={() => setSelectedResult(res)}
                         className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all inline-flex items-center gap-1 ${
                           isDark
-                            ? 'bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white border-purple-500/30'
-                            : 'bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border-purple-200 shadow-2xs'
+                            ? 'bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border-indigo-500/30'
+                            : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border-indigo-200 shadow-2xs'
                         }`}
                       >
                         <Eye size={14} /> Rubric Specs
@@ -499,15 +500,15 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
             <div className={`p-6 border-b flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-200 bg-slate-50/50'}`}>
               <div className="flex items-center gap-3">
                 {selectedResult.avatarUrl ? (
-                  <img src={selectedResult.avatarUrl} alt={selectedResult.username} className="w-12 h-12 rounded-full border border-purple-500/40 object-cover" />
+                  <img src={selectedResult.avatarUrl} alt={selectedResult.username} className="w-12 h-12 rounded-full border border-indigo-500/40 object-cover" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-purple-600/20 text-purple-600 font-extrabold flex items-center justify-center text-lg">
+                  <div className="w-12 h-12 rounded-full bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 font-extrabold flex items-center justify-center text-lg">
                     {(selectedResult.name || selectedResult.username || 'G').charAt(0)}
                   </div>
                 )}
                 <div>
                   <h3 className={`font-extrabold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedResult.name}</h3>
-                  <div className={`text-xs font-mono font-semibold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                  <div className={`text-xs font-mono font-semibold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                     @{selectedResult.username} • {selectedResult.location || 'Location Not Set'}
                   </div>
                 </div>
@@ -528,11 +529,11 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
               {/* Score Header Card */}
               <div className={`p-4.5 rounded-xl border flex items-center justify-between ${
                 isDark
-                  ? 'bg-gradient-to-r from-purple-900/30 via-indigo-900/20 to-pink-900/20 border-purple-500/30'
-                  : 'bg-gradient-to-r from-purple-50 via-indigo-50 to-pink-50 border-purple-200'
+                  ? 'bg-slate-800/80 border-slate-700'
+                  : 'bg-indigo-50/70 border-indigo-200'
               }`}>
                 <div>
-                  <div className={`text-xs font-bold uppercase ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                  <div className={`text-xs font-bold uppercase ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>
                     Total Rubric Evaluation Score
                   </div>
                   <div className={`text-3xl font-black mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -543,8 +544,8 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                   <span className={`inline-block px-3.5 py-1.5 rounded-full text-xs font-bold ${
                     selectedResult.gradeColor === 'emerald'
                       ? isDark ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : selectedResult.gradeColor === 'cyan'
-                      ? isDark ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-cyan-100 text-cyan-800 border border-cyan-300'
+                      : selectedResult.gradeColor === 'cyan' || selectedResult.gradeColor === 'indigo'
+                      ? isDark ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
                       : selectedResult.gradeColor === 'amber'
                       ? isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-800 border border-amber-300'
                       : isDark ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-rose-100 text-rose-800 border border-rose-300'
@@ -557,8 +558,8 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
               {/* Categorized Criteria Breakdown */}
               {(() => {
                 const breakdownList = selectedResult.breakdown || [];
-                const passedItems = breakdownList.filter(item => item.passed || item.score > 0);
-                const missingItems = breakdownList.filter(item => !item.passed && item.score === 0);
+                const passedItems = breakdownList.filter((item: any) => item.passed || item.score > 0);
+                const missingItems = breakdownList.filter((item: any) => !item.passed && item.score === 0);
                 const isAllPresent = missingItems.length === 0 || selectedResult.totalScore >= 60;
 
                 return (
@@ -598,7 +599,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                       </h4>
                       {passedItems.length > 0 ? (
                         <div className="space-y-2">
-                          {passedItems.map((item, idx) => (
+                          {passedItems.map((item: any, idx: number) => (
                             <div key={idx} className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
                               isDark ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-200' : 'bg-emerald-50/80 border-emerald-200 text-slate-900'
                             }`}>
@@ -629,7 +630,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
                       </h4>
                       {missingItems.length > 0 ? (
                         <div className="space-y-2">
-                          {missingItems.map((item, idx) => (
+                          {missingItems.map((item: any, idx: number) => (
                             <div key={idx} className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
                               isDark ? 'bg-rose-500/5 border-rose-500/20 text-slate-200' : 'bg-rose-50/80 border-rose-200 text-slate-900'
                             }`}>
@@ -664,15 +665,15 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
               {selectedResult.topRepos && selectedResult.topRepos.length > 0 && (
                 <div>
                   <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    <FolderGit2 size={14} className="text-purple-500" /> Top / Pinned Repositories Analyzed
+                    <FolderGit2 size={14} className="text-indigo-400" /> Top / Pinned Repositories Analyzed
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedResult.topRepos.map((repo, rIdx) => (
+                    {selectedResult.topRepos.map((repo: any, rIdx: number) => (
                       <div key={rIdx} className={`p-3.5 rounded-xl border space-y-1.5 ${
                         isDark ? 'border-slate-800 bg-slate-800/40' : 'border-slate-200 bg-slate-50'
                       }`}>
                         <div className="flex items-center justify-between">
-                          <a href={repo.url} target="_blank" rel="noreferrer" className="font-bold text-sm text-purple-500 hover:underline flex items-center gap-1">
+                          <a href={repo.url} target="_blank" rel="noreferrer" className="font-bold text-sm text-indigo-400 hover:underline flex items-center gap-1">
                             {repo.name} <ExternalLink size={12} />
                           </a>
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${

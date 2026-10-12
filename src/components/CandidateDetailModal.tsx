@@ -30,16 +30,16 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
               <h2 className="text-xl font-bold">{candidate.name}</h2>
               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                 candidate.category === 'Shortlist'
-                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : candidate.category === 'Waiting List'
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
               }`}>
                 {candidate.category}
               </span>
             </div>
-            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Email: <strong>{candidate.email || 'N/A'}</strong> | Phone: <strong>{candidate.phone || 'N/A'}</strong>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              Email: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{candidate.email || 'N/A'}</strong> | Phone: <strong className={isDark ? 'text-white' : 'text-slate-900'}>{candidate.phone || 'N/A'}</strong>
             </p>
           </div>
 
@@ -49,7 +49,7 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
                 href={candidate.resumeLink}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-500 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> View Resume
               </a>
@@ -57,7 +57,7 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
             <button
               onClick={onClose}
               className={`p-1.5 rounded-lg transition ${
-                isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-black hover:bg-slate-100'
+                isDark ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-black hover:bg-slate-100'
               }`}
             >
               <X className="w-5 h-5" />
@@ -70,10 +70,10 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
           {/* Critical Warning Callout */}
           {candidate.criticalFlag && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-xs font-bold text-rose-500 uppercase">Critical Requirement Missing Flag</h4>
-                <p className="text-xs opacity-90 mt-0.5">
+                <h4 className="text-xs font-bold text-rose-400 uppercase">Critical Requirement Missing Flag</h4>
+                <p className="text-xs text-rose-300/90 mt-0.5">
                   This candidate is missing one or more essential Must-Have requirements ({candidate.matchingResults.criticalMissing.join(', ')}). A 10% penalty was applied to their final score.
                 </p>
               </div>
@@ -83,16 +83,16 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
           {/* Metric Score Cards */}
           <div className="grid grid-cols-3 gap-4">
             <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Final Score</p>
-              <p className="text-2xl font-bold font-mono text-cyan-500 mt-1">{candidate.finalScore}%</p>
+              <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Final Score</p>
+              <p className="text-2xl font-bold font-mono text-indigo-400 mt-1">{candidate.finalScore}%</p>
             </div>
             <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Skill Match Score</p>
-              <p className="text-2xl font-bold font-mono text-indigo-500 mt-1">{candidate.matchScore}%</p>
+              <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Skill Match Score</p>
+              <p className="text-2xl font-bold font-mono text-indigo-400 mt-1">{candidate.matchScore}%</p>
             </div>
             <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ATS Format Rating</p>
-              <p className="text-2xl font-bold font-mono text-emerald-500 mt-1">{candidate.atsScore}%</p>
+              <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>ATS Format Rating</p>
+              <p className="text-2xl font-bold font-mono text-emerald-400 mt-1">{candidate.atsScore}%</p>
             </div>
           </div>
 
@@ -104,27 +104,27 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
 
               // 1. Must Have Skills
               if (candidate.matchingResults?.mustHaveResults) {
-                const matched = candidate.matchingResults.mustHaveResults.filter(r => r.status !== 'Missing');
-                const missing = candidate.matchingResults.mustHaveResults.filter(r => r.status === 'Missing');
+                const matched = candidate.matchingResults.mustHaveResults.filter((r: any) => r.status !== 'Missing');
+                const missing = candidate.matchingResults.mustHaveResults.filter((r: any) => r.status === 'Missing');
 
                 if (matched.length > 0) {
-                  okItems.push(`Matched Must-Have Skills: ${matched.map(m => m.name).join(', ')}`);
+                  okItems.push(`Matched Must-Have Skills: ${matched.map((m: any) => m.name).join(', ')}`);
                 }
-                missing.forEach(m => {
+                missing.forEach((m: any) => {
                   notOkItems.push(`Missing Required Skill: ${m.name}${m.reason ? ` (${m.reason})` : ''}`);
                 });
               }
 
               // 2. Nice To Have Skills
               if (candidate.matchingResults?.niceToHaveResults) {
-                const matchedBonus = candidate.matchingResults.niceToHaveResults.filter(r => r.status !== 'Missing');
-                const missingBonus = candidate.matchingResults.niceToHaveResults.filter(r => r.status === 'Missing');
+                const matchedBonus = candidate.matchingResults.niceToHaveResults.filter((r: any) => r.status !== 'Missing');
+                const missingBonus = candidate.matchingResults.niceToHaveResults.filter((r: any) => r.status === 'Missing');
 
                 if (matchedBonus.length > 0) {
-                  okItems.push(`Bonus / Nice-to-Have Skills Matched: ${matchedBonus.map(m => m.name).join(', ')}`);
+                  okItems.push(`Bonus / Nice-to-Have Skills Matched: ${matchedBonus.map((m: any) => m.name).join(', ')}`);
                 }
                 if (missingBonus.length > 0) {
-                  notOkItems.push(`Nice-to-Have Gap: ${missingBonus.map(m => m.name).join(', ')}`);
+                  notOkItems.push(`Nice-to-Have Gap: ${missingBonus.map((m: any) => m.name).join(', ')}`);
                 }
               }
 
@@ -136,10 +136,10 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
 
               // 4. ATS Checklist
               if (candidate.atsDetails?.checklist) {
-                const passedList = candidate.atsDetails.checklist.filter(c => c.passed);
-                const failedList = candidate.atsDetails.checklist.filter(c => !c.passed);
-                passedList.forEach(p => okItems.push(`ATS Format OK: ${p.name} (${p.detail})`));
-                failedList.forEach(f => notOkItems.push(`ATS Format Issue: ${f.name} (${f.detail})`));
+                const passedList = candidate.atsDetails.checklist.filter((c: any) => c.passed);
+                const failedList = candidate.atsDetails.checklist.filter((c: any) => !c.passed);
+                passedList.forEach((p: any) => okItems.push(`ATS Format OK: ${p.name} (${p.detail})`));
+                failedList.forEach((f: any) => notOkItems.push(`ATS Format Issue: ${f.name} (${f.detail})`));
               }
 
               // 5. Unrelated / Extra Skills Penalty Notice
@@ -179,9 +179,9 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
                   const rawNotes = formatMatch[1].trim();
                   // Clean up e.g. dots temporarily to avoid bad splitting
                   const normalizedNotes = rawNotes.replace(/e\.g\./g, 'e_g_');
-                  normalizedNotes.split(/(?<=\.)\s+/).forEach(note => {
+                  normalizedNotes.split(/(?<=\.)\s+/).forEach((note: any) => {
                     const cleanNote = note.replace(/e_g_/g, 'e.g.').trim();
-                    if (cleanNote && cleanNote.length > 5 && !notOkItems.some(i => i.includes(cleanNote))) {
+                    if (cleanNote && cleanNote.length > 5 && !notOkItems.some((i: any) => i.includes(cleanNote))) {
                       notOkItems.push(cleanNote.startsWith('Formatting Notes:') ? cleanNote : `ATS Formatting Note: ${cleanNote}`);
                     }
                   });
@@ -266,13 +266,13 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
               {candidate.matchingResults.mustHaveResults.length === 0 ? (
                 <p className="text-xs opacity-60 italic">No explicit Must-Have skills defined.</p>
               ) : (
-                candidate.matchingResults.mustHaveResults.map((req, idx) => (
+                candidate.matchingResults.mustHaveResults.map((req: any, idx: number) => (
                   <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border ${
                     isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
                   }`}>
                     <div className="flex items-center gap-2.5">
                       {req.status === 'Strong' && <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
-                      {req.status === 'Moderate' && <CheckCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                      {req.status === 'Moderate' && <CheckCircle className="w-4 h-4 text-indigo-400 flex-shrink-0" />}
                       {req.status === 'Missing' && <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />}
                       <span className="text-xs font-medium">{req.name}</span>
                     </div>
@@ -290,13 +290,13 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
               {candidate.matchingResults.niceToHaveResults.length === 0 ? (
                 <p className="text-xs opacity-60 italic">No Nice-to-Have skills defined.</p>
               ) : (
-                candidate.matchingResults.niceToHaveResults.map((req, idx) => (
+                candidate.matchingResults.niceToHaveResults.map((req: any, idx: number) => (
                   <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border ${
                     isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
                   }`}>
                     <div className="flex items-center gap-2.5">
                       {req.status === 'Strong' && <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
-                      {req.status === 'Moderate' && <CheckCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                      {req.status === 'Moderate' && <CheckCircle className="w-4 h-4 text-indigo-400 flex-shrink-0" />}
                       {req.status === 'Missing' && <XCircle className="w-4 h-4 text-slate-400 flex-shrink-0" />}
                       <span className="text-xs font-medium">{req.name}</span>
                     </div>
@@ -318,7 +318,7 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
 
               {candidate.atsDetails.checklist && candidate.atsDetails.checklist.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                  {candidate.atsDetails.checklist.map((item, cIdx) => (
+                  {candidate.atsDetails.checklist.map((item: any, cIdx: number) => (
                     <div key={cIdx} className={`p-2.5 rounded-lg border flex items-center justify-between ${
                       item.passed
                         ? isDark ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -336,11 +336,11 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
 
               {candidate.atsDetails.warnings && candidate.atsDetails.warnings.length > 0 && (
                 <div className="pt-2">
-                  <h5 className="text-[11px] font-semibold text-amber-500 mb-1">ATS Optimization Suggestions:</h5>
+                  <h5 className="text-[11px] font-semibold text-indigo-400 mb-1">ATS Optimization Suggestions:</h5>
                   <ul className="space-y-1 text-xs">
-                    {candidate.atsDetails.warnings.map((warn, wIdx) => (
+                    {candidate.atsDetails.warnings.map((warn: any, wIdx: number) => (
                       <li key={wIdx} className="text-[11px] opacity-90 flex items-start gap-1.5">
-                        <span className="text-amber-500">•</span> {warn}
+                        <span className="text-indigo-400">•</span> {warn}
                       </li>
                     ))}
                   </ul>

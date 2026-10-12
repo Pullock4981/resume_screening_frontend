@@ -10,7 +10,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, adminSecret?: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<{ pendingApproval?: boolean; message?: string; success?: boolean }>;
   logout: () => void;
   authError: string | null;
   setAuthError: (err: string | null) => void;
@@ -18,7 +18,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -42,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
     localStorage.setItem('auth_token', newToken);
     localStorage.setItem('auth_user', JSON.stringify(newUser));
-    localStorage.setItem('auth_timestamp', now.toString());
     localStorage.setItem('auth_last_activity', now.toString());
   };
 
@@ -51,88 +49,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_timestamp');
     localStorage.removeItem('auth_last_activity');
+    localStorage.removeItem('auth_timestamp');
   };
 
-  // 10-Minute Inactivity Auto-Logout Security (Point 5)
-  // Only logs out if user is completely inactive for 10 minutes. Active users are NEVER logged out.
-  useEffect(() => {
-    if (!token || !user) return;
-
-    let timer: NodeJS.Timeout;
-    let lastSave = 0;
-
-    const handleUserActivity = () => {
-      const now = Date.now();
-
-      // Throttled update to localStorage every 5 seconds
-      if (now - lastSave > 5000) {
-        lastSave = now;
-        localStorage.setItem('auth_last_activity', now.toString());
-      }
-
-      if (timer) clearTimeout(timer);
-
-      // Schedule auto-logout after 10 minutes of zero activity
-      timer = setTimeout(() => {
-        const currentNow = Date.now();
-        const savedLastActivityStr = localStorage.getItem('auth_last_activity');
-        const lastActivityTime = savedLastActivityStr ? parseInt(savedLastActivityStr, 10) : now;
-        const elapsed = currentNow - lastActivityTime;
-
-        if (elapsed >= TEN_MINUTES_MS) {
-          console.warn('10 minutes of complete user inactivity detected. Auto logging out.');
-          setAuthError('Secured Auto-Logout: You were automatically logged out due to 10 minutes of inactivity.');
-          logout();
-        }
-      }, TEN_MINUTES_MS);
-    };
-
-    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
-    activityEvents.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
-
-    // Check initial elapsed time on mount/load
-    const initialLastActivityStr = localStorage.getItem('auth_last_activity');
-    if (initialLastActivityStr) {
-      const elapsed = Date.now() - parseInt(initialLastActivityStr, 10);
-      if (elapsed >= TEN_MINUTES_MS) {
-        setAuthError('Secured Auto-Logout: You were automatically logged out due to 10 minutes of inactivity.');
-        logout();
-        return;
-      }
-    } else {
-      localStorage.setItem('auth_last_activity', Date.now().toString());
-    }
-
-    // Start initial timer
-    handleUserActivity();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      activityEvents.forEach(evt => window.removeEventListener(evt, handleUserActivity));
-    };
-  }, [token, user]);
-
-  // Load session from localStorage on mount & enforce 24-hour expiry
+  // Restore session from localStorage on mount & verify 10-minute inactivity limit
   useEffect(() => {
     try {
       const savedToken = localStorage.getItem('auth_token');
       const savedUser = localStorage.getItem('auth_user');
-      const savedTime = localStorage.getItem('auth_timestamp');
+      const savedLastActivity = localStorage.getItem('auth_last_activity');
 
-      if (savedToken && savedUser && savedTime) {
-        const timestamp = parseInt(savedTime, 10);
+      if (savedToken && savedUser) {
+        const lastActivityTime = savedLastActivity ? parseInt(savedLastActivity, 10) : 0;
         const now = Date.now();
 
-        // Check if 24 hours passed
-        if (now - timestamp > TWENTY_FOUR_HOURS_MS) {
-          console.log('24-hour login session expired. Logging out.');
+        // Expire if no activity recorded or more than 10 minutes of inactivity
+        if (!lastActivityTime || now - lastActivityTime >= TEN_MINUTES_MS) {
+          console.warn('10-minute inactivity timeout reached. Logging out.');
           logout();
+          setAuthError('Secured Auto-Logout: You were logged out due to 10 minutes of inactivity.');
         } else {
           setToken(savedToken);
           setUser(JSON.parse(savedUser));
+          localStorage.setItem('auth_last_activity', now.toString());
         }
+      } else {
+        logout();
       }
     } catch (e) {
       console.error('Auth restore error:', e);
@@ -141,6 +84,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  // Strict 10-minute inactivity detection: logs out after 10 min of complete inactivity
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let lastSave = Date.now();
+
+    const checkInactivity = () => {
+      const savedLastActivityStr = localStorage.getItem('auth_last_activity');
+      if (savedLastActivityStr) {
+        const lastActivityTime = parseInt(savedLastActivityStr, 10);
+        const elapsed = Date.now() - lastActivityTime;
+        if (elapsed >= TEN_MINUTES_MS) {
+          console.warn('10 minutes of inactivity elapsed. Auto logging out.');
+          setAuthError('Secured Auto-Logout: You were automatically logged out due to 10 minutes of inactivity.');
+          logout();
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const handleUserActivity = () => {
+      const now = Date.now();
+      // Throttle localStorage update to every 2 seconds
+      if (now - lastSave > 2000) {
+        lastSave = now;
+        localStorage.setItem('auth_last_activity', now.toString());
+      }
+    };
+
+    // Listen for any user input / mouse / touch / scroll events
+    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
+    activityEvents.forEach((evt) => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+    // Periodic check every 3 seconds
+    const intervalId = setInterval(() => {
+      checkInactivity();
+    }, 3000);
+
+    // Re-check immediately when tab becomes focused or visible
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+      }
+    };
+    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+
+    return () => {
+      clearInterval(intervalId);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
+      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+    };
+  }, [token, user]);
 
   const login = async (email: string, password: string) => {
     setAuthError(null);
@@ -163,13 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, adminSecret?: string) => {
+  const register = async (name: string, email: string, password: string) => {
     setAuthError(null);
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, adminSecret })
+        body: JSON.stringify({ name, email, password })
       });
 
       const data = await res.json();
@@ -177,7 +176,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || 'Registration failed.');
       }
 
-      saveSession(data.token, data.user);
+      if (data.pendingApproval) {
+        return { pendingApproval: true, message: data.message };
+      }
+
+      if (data.token && data.user) {
+        saveSession(data.token, data.user);
+      }
+      return { success: true };
     } catch (err: any) {
       setAuthError(err.message || 'Registration failed.');
       throw err;

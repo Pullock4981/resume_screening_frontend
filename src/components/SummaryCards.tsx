@@ -45,18 +45,18 @@ export default function SummaryCards({
         onClick={() => onSelectCategory && onSelectCategory('All')}
         className={`${cardBase} ${
           activeCategory === 'All'
-            ? 'ring-2 ring-blue-500 bg-blue-500/10 border-blue-500/50'
+            ? 'ring-2 ring-indigo-500 bg-indigo-500/10 border-indigo-500/50'
             : isDark
-            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-slate-100'
-            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-900 shadow-xs'
+            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-white'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900 shadow-xs'
         }`}
       >
-        <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20">
+        <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
           <Users className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Evaluated</p>
-          <p className="text-xl font-bold font-mono">{total}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Total Evaluated</p>
+          <p className={`text-xl font-bold font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{total}</p>
         </div>
       </button>
 
@@ -68,16 +68,16 @@ export default function SummaryCards({
           activeCategory === 'Shortlist'
             ? 'ring-2 ring-emerald-500 bg-emerald-500/10 border-emerald-500/50'
             : isDark
-            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-slate-100'
-            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-900 shadow-xs'
+            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-white'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900 shadow-xs'
         }`}
       >
-        <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+        <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
           <CheckCircle2 className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Shortlisted (≥80%)</p>
-          <p className="text-xl font-bold font-mono text-emerald-500">{shortlisted}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Shortlisted (≥80%)</p>
+          <p className="text-xl font-bold font-mono text-emerald-400">{shortlisted}</p>
         </div>
       </button>
 
@@ -87,18 +87,18 @@ export default function SummaryCards({
         onClick={() => onSelectCategory && onSelectCategory('Waiting List')}
         className={`${cardBase} ${
           activeCategory === 'Waiting List'
-            ? 'ring-2 ring-amber-500 bg-amber-500/10 border-amber-500/50'
+            ? 'ring-2 ring-indigo-500 bg-indigo-500/10 border-indigo-500/50'
             : isDark
-            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-slate-100'
-            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-900 shadow-xs'
+            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-white'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900 shadow-xs'
         }`}
       >
-        <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+        <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
           <Clock className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Waiting List (70-79%)</p>
-          <p className="text-xl font-bold font-mono text-amber-500">{waitingList}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Waiting List (70-79%)</p>
+          <p className={`text-xl font-bold font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{waitingList}</p>
         </div>
       </button>
 
@@ -110,16 +110,16 @@ export default function SummaryCards({
           activeCategory === 'Reject'
             ? 'ring-2 ring-rose-500 bg-rose-500/10 border-rose-500/50'
             : isDark
-            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-slate-100'
-            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-900 shadow-xs'
+            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-white'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900 shadow-xs'
         }`}
       >
-        <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20">
+        <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
           <XCircle className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Rejected (&lt;70%)</p>
-          <p className="text-xl font-bold font-mono text-rose-500">{rejected}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Rejected (&lt;70%)</p>
+          <p className="text-xl font-bold font-mono text-rose-400">{rejected}</p>
         </div>
       </button>
 
@@ -129,18 +129,18 @@ export default function SummaryCards({
         onClick={() => onSelectCategory && onSelectCategory('CriticalMissing')}
         className={`${cardBase} col-span-2 lg:col-span-1 ${
           activeCategory === 'CriticalMissing'
-            ? 'ring-2 ring-orange-500 bg-orange-500/10 border-orange-500/50'
+            ? 'ring-2 ring-rose-500 bg-rose-500/10 border-rose-500/50'
             : isDark
-            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-slate-100'
-            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-900 shadow-xs'
+            ? 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/80 text-white'
+            : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-900 shadow-xs'
         }`}
       >
-        <div className="p-2.5 rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20">
+        <div className="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
           <AlertOctagon className="w-5 h-5" />
         </div>
         <div>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Critical Flagged</p>
-          <p className="text-xl font-bold font-mono text-orange-500">{criticalFlagged}</p>
+          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Critical Flagged</p>
+          <p className="text-xl font-bold font-mono text-rose-400">{criticalFlagged}</p>
         </div>
       </button>
     </div>

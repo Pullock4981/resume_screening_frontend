@@ -140,7 +140,7 @@ export default function ProjectDashboardView({
 
             <button
               onClick={onNewScreening}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> + New Screening Batch
             </button>
@@ -240,7 +240,7 @@ export default function ProjectDashboardView({
                     <span className="font-bold">{r.totalCandidates} Candidates</span>
                     <div className="flex items-center gap-1.5 text-[10px] font-bold">
                       <span className="text-emerald-400">✓ {r.goodToGoCount}</span>
-                      <span className="text-amber-400">⏱ {r.waitingListCount}</span>
+                      <span className="text-indigo-400">⏱ {r.waitingListCount}</span>
                       <span className="text-rose-400">✕ {r.notMatchingCount}</span>
                     </div>
                   </div>

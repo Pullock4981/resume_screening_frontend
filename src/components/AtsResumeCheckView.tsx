@@ -131,17 +131,16 @@ export const AtsResumeCheckView: React.FC<Props> = ({ theme = 'dark', onSaveHist
   };
 
   const getSeverityBadge = (severity: string) => {
-    if (severity === 'CRITICAL') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/70 text-red-200 border border-red-700'>CRITICAL</span>;
-    if (severity === 'HIGH') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-orange-900/70 text-orange-200 border border-orange-700'>HIGH</span>;
-    if (severity === 'MEDIUM') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/70 text-yellow-200 border border-yellow-700'>MEDIUM</span>;
-    if (severity === 'LOW') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900/70 text-blue-200 border border-blue-700'>LOW</span>;
-    return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/70 text-emerald-200 border border-emerald-700'>GOOD</span>;
+    if (severity === 'CRITICAL' || severity === 'HIGH') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20'>{severity}</span>;
+    if (severity === 'MEDIUM') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20'>MEDIUM</span>;
+    if (severity === 'LOW') return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'>LOW</span>;
+    return <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'>GOOD</span>;
   };
 
   const getAtsBadge = (score: number) => {
-    if (score >= 80) return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center space-x-1'><CheckCircle2 className='w-3.5 h-3.5 text-emerald-500 inline mr-1' />ATS Friendly ({score})</span>;
-    if (score >= 60) return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center space-x-1'><AlertTriangle className='w-3.5 h-3.5 text-amber-500 inline mr-1' />Needs Work ({score})</span>;
-    return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center space-x-1'><XCircle className='w-3.5 h-3.5 text-rose-500 inline mr-1' />High Risk ({score})</span>;
+    if (score >= 80) return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1'><CheckCircle2 className='w-3.5 h-3.5 text-emerald-400 inline mr-1' />ATS Friendly ({score})</span>;
+    if (score >= 60) return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 flex items-center space-x-1'><AlertTriangle className='w-3.5 h-3.5 text-indigo-400 inline mr-1' />Needs Work ({score})</span>;
+    return <span className='px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center space-x-1'><XCircle className='w-3.5 h-3.5 text-rose-400 inline mr-1' />High Risk ({score})</span>;
   };
 
   const filteredBatch = batchResults.filter(item => {

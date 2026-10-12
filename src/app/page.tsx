@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar, { NavigationTab } from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import InputForm from '../components/InputForm';
@@ -14,32 +14,69 @@ import HistoryView, { HistoryRecord } from '../components/HistoryView';
 import ProjectDashboardView from '../components/ProjectDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
 import GithubCheckView from '../components/GithubCheckView';
+import LinkedinCheckView from '../components/LinkedinCheckView';
 import NexView from '../components/NexView';
 import AiAssignmentCheckView from '../components/AiAssignmentCheckView';
 import AdminUserManagementView from '../components/AdminUserManagementView';
 import AuthView from '../components/AuthView';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { CandidateResult, AtsHistoryRecord, NexViewRecord } from '../types';
+import { CandidateResult, AtsHistoryRecord, NexViewRecord, LinkedinHistoryRecord } from '../types';
+import { ROUTE_CONFIG, getTabFromPathname } from '../utils/routes';
 
 function MainAppContent() {
   const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavigationTab>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
 
+  const navigateToTab = useCallback((tab: NavigationTab, replace = false) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const meta = ROUTE_CONFIG[tab] || ROUTE_CONFIG.screening;
+      if (replace) {
+        window.history.replaceState({ tab }, '', meta.path);
+      } else {
+        if (window.location.pathname !== meta.path) {
+          window.history.pushState({ tab }, '', meta.path);
+        }
+      }
+      document.title = `${meta.title} | Placement Kit`;
+    }
+  }, []);
+
+  // Listen to URL changes & browser Back/Forward (popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleLocationChange = () => {
+      const targetTab = getTabFromPathname(window.location.pathname, isAdmin);
+      setActiveTab(targetTab);
+      const meta = ROUTE_CONFIG[targetTab] || ROUTE_CONFIG.screening;
+      document.title = `${meta.title} | Placement Kit`;
+    };
+
+    // On initial mount, sync activeTab with browser URL
+    handleLocationChange();
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, [isAdmin]);
+
   // Route access restrictions for Admin and User
   useEffect(() => {
     if (isAuthenticated) {
       if (!isAdmin) {
-        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminNexViewHistory'].includes(activeTab)) {
-          setActiveTab('screening');
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory'].includes(activeTab)) {
+          navigateToTab('screening', true);
         }
       } else {
-        if (['screening', 'atsCheck', 'githubCheck', 'dictionary', 'guide'].includes(activeTab)) {
-          setActiveTab('adminDashboard');
+        if (['screening', 'atsCheck', 'githubCheck', 'linkedinCheck', 'dictionary', 'guide'].includes(activeTab)) {
+          navigateToTab('adminDashboard', true);
         }
       }
     }
-  }, [isAdmin, isAuthenticated]);
+  }, [isAdmin, isAuthenticated, activeTab, navigateToTab]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
@@ -87,7 +124,7 @@ function MainAppContent() {
   const syncHistoryWithGoogleSheets = async () => {
     setIsSyncing(true);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/history`, {
@@ -338,10 +375,28 @@ function MainAppContent() {
     syncHistoryWithGoogleSheets();
   };
 
+  const [linkedinHistoryRecords, setLinkedinHistoryRecords] = useState<LinkedinHistoryRecord[]>([]);
+
+  useEffect(() => {
+    try {
+      const savedLi = localStorage.getItem('linkedin_check_history');
+      if (savedLi) setLinkedinHistoryRecords(JSON.parse(savedLi));
+    } catch (e) {}
+  }, []);
+
   const handleSaveGithubRecord = (newRecord: any) => {
     setGithubHistoryRecords(prev => {
       const updated = [newRecord, ...prev];
       try { localStorage.setItem('github_check_history', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    syncHistoryWithGoogleSheets();
+  };
+
+  const handleSaveLinkedinRecord = (newRecord: any) => {
+    setLinkedinHistoryRecords(prev => {
+      const updated = [newRecord, ...prev];
+      try { localStorage.setItem('linkedin_check_history', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
     syncHistoryWithGoogleSheets();
@@ -354,7 +409,7 @@ function MainAppContent() {
       <div className={`min-h-screen flex items-center justify-center font-sans ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-semibold">Verifying 24-Hour Session...</span>
+          <span className="text-xs font-semibold">Verifying Session...</span>
         </div>
       </div>
     );
@@ -371,19 +426,20 @@ function MainAppContent() {
       {/* Sidebar Component */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateToTab}
         theme={theme}
         setTheme={setTheme}
         candidateCount={candidates.length}
-        historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && (r as any).type !== 'github').length}
-        atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
+        historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && !/linkedin/i.test(r.operationName || '') && (r as any).type !== 'github' && (r as any).type !== 'linkedin').length}
+        atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && !/linkedin/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
         githubHistoryCount={historyRecords.filter(r => /github/i.test(r.operationName || '') || (r as any).type === 'github').length}
+        linkedinHistoryCount={historyRecords.filter(r => /linkedin/i.test(r.operationName || '') || (r as any).type === 'linkedin').length || linkedinHistoryRecords.length}
         nexViewHistoryCount={nexViewHistoryRecords.length}
       />
 
       {/* Main Right Content Panel */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar theme={theme} setTheme={setTheme} />
+        <Navbar theme={theme} setTheme={setTheme} activeTab={activeTab} />
 
         <main className={`flex-1 w-full max-w-[1920px] mx-auto ${
           activeTab === 'nexView' || activeTab === 'aiAssignmentCheck' ? 'p-0 h-[calc(100vh-65px)] overflow-hidden' : (activeTab === 'screening' ? (candidates.length > 0 ? 'p-4 sm:p-6 md:p-8 space-y-6' : 'p-3 sm:p-4 space-y-3 max-h-[calc(100vh-65px)] overflow-hidden') : 'p-4 sm:p-6 md:p-8 space-y-6')
@@ -454,6 +510,9 @@ function MainAppContent() {
           {/* TAB: GitHub Profile Check (60-Point Rubric) */}
           {activeTab === 'githubCheck' && <GithubCheckView theme={theme} onSaveHistoryRecord={handleSaveGithubRecord} />}
 
+          {/* TAB: LinkedIn Profile Check (60-Point Rubric) */}
+          {activeTab === 'linkedinCheck' && <LinkedinCheckView theme={theme} onSaveHistoryRecord={handleSaveLinkedinRecord} />}
+
           {/* TAB: NexView Tool Portal */}
           {activeTab === 'nexView' && <NexView theme={theme} />}
 
@@ -468,7 +527,7 @@ function MainAppContent() {
               activeCandidates={candidates}
               selectedProjectId={selectedProjectId}
               onSelectProject={setSelectedProjectId}
-              onNewScreening={() => setActiveTab('screening')}
+              onNewScreening={() => navigateToTab('screening')}
               onSelectCandidate={setSelectedCandidate}
               isLoading={isLoading}
               isFinished={isFinished}
@@ -477,12 +536,13 @@ function MainAppContent() {
           )}
 
           {/* TAB 3 & Admin History Routes */}
-          {(activeTab === 'history' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory' || activeTab === 'adminNexViewHistory') && (
+          {(activeTab === 'history' || activeTab === 'adminScreeningHistory' || activeTab === 'adminAtsHistory' || activeTab === 'adminGithubHistory' || activeTab === 'adminLinkedinHistory' || activeTab === 'adminNexViewHistory') && (
             <HistoryView
               theme={theme}
               historyRecords={historyRecords}
               atsHistoryRecords={atsHistoryRecords}
               githubHistoryRecords={githubHistoryRecords}
+              linkedinHistoryRecords={linkedinHistoryRecords}
               nexViewHistoryRecords={nexViewHistoryRecords}
               onSelectRecord={handleSelectHistoryRecord}
               onClearHistory={handleClearHistory}
@@ -492,6 +552,8 @@ function MainAppContent() {
               defaultSubTab={
                 activeTab === 'adminNexViewHistory'
                   ? 'nexView'
+                  : activeTab === 'adminLinkedinHistory'
+                  ? 'linkedinCheck'
                   : activeTab === 'adminGithubHistory'
                   ? 'githubCheck'
                   : activeTab === 'adminAtsHistory'
@@ -502,9 +564,9 @@ function MainAppContent() {
           )}
 
           {/* TAB: Admin User Management Panel & Dashboard */}
-          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" onNavigateTab={setActiveTab} />}
-          {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" onNavigateTab={setActiveTab} />}
-          {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" onNavigateTab={setActiveTab} />}
+          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" onNavigateTab={navigateToTab} />}
+          {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" onNavigateTab={navigateToTab} />}
+          {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" onNavigateTab={navigateToTab} />}
 
           {/* TAB 4: Skill Rules & ATS Dataset */}
           {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}

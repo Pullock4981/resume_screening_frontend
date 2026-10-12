@@ -51,9 +51,9 @@ export default function CandidateTable({
         : c.category === activeFilterCategory;
 
     const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.phone.toLowerCase().includes(searchQuery.toLowerCase());
+      (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.phone || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesCat && matchesSearch;
   });
@@ -168,21 +168,23 @@ export default function CandidateTable({
                   }`}
                 >
                   {/* Name */}
-                  <td className="py-3.5 px-4 font-semibold group-hover:text-indigo-500 transition">
+                  <td className={`py-3.5 px-4 font-semibold transition ${
+                    isDark ? 'text-white group-hover:text-indigo-400' : 'text-slate-900 group-hover:text-indigo-600'
+                  }`}>
                     {c.name}
                   </td>
 
                   {/* Email & Phone */}
-                  <td className={isDark ? 'py-3.5 px-4 text-slate-400' : 'py-3.5 px-4 text-slate-600'}>
-                    <div>{c.email || 'N/A'}</div>
-                    <div className="text-[11px] opacity-70">{c.phone}</div>
+                  <td className={isDark ? 'py-3.5 px-4 text-slate-300' : 'py-3.5 px-4 text-slate-700'}>
+                    <div className="font-medium">{c.email || 'N/A'}</div>
+                    <div className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{c.phone}</div>
                   </td>
 
                   {/* Final Score */}
                   <td className="py-3.5 px-4 font-mono font-bold">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm ${
-                        c.finalScore >= 90 ? 'text-emerald-500' : c.finalScore >= 70 ? 'text-amber-500' : 'text-rose-500'
+                        c.finalScore >= 80 ? 'text-emerald-400' : c.finalScore >= 70 ? 'text-indigo-400' : 'text-rose-400'
                       }`}>
                         {c.finalScore}%
                       </span>
@@ -191,7 +193,7 @@ export default function CandidateTable({
                       }`}>
                         <div
                           className={`h-full ${
-                            c.finalScore >= 90 ? 'bg-emerald-500' : c.finalScore >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                            c.finalScore >= 80 ? 'bg-emerald-500' : c.finalScore >= 70 ? 'bg-indigo-500' : 'bg-rose-500'
                           }`}
                           style={{ width: `${c.finalScore}%` }}
                         />
@@ -201,8 +203,8 @@ export default function CandidateTable({
 
                   {/* ATS Format Score */}
                   <td className="py-3.5 px-4 font-mono">
-                    <span className={`px-2 py-0.5 rounded border ${
-                      isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                    <span className={`px-2 py-0.5 rounded border font-semibold ${
+                      isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-200 text-slate-800'
                     }`}>
                       {c.atsScore}%
                     </span>
@@ -211,27 +213,27 @@ export default function CandidateTable({
                   {/* Category Badge */}
                   <td className="py-3.5 px-4">
                     {(c.category.includes('Good to Go') || c.category === 'Shortlist') && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         <CheckCircle2 className="w-3 h-3" /> Good to Go (80%+)
                       </span>
                     )}
                     {c.category.includes('Waiting List') && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
                         <Clock className="w-3 h-3" /> Waiting List (70-79%)
                       </span>
                     )}
                     {c.category.includes('Partial Match') && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                         <XCircle className="w-3 h-3" /> Partial Match (50-69%)
                       </span>
                     )}
                     {c.category.includes('Weak Fit') && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                         <XCircle className="w-3 h-3" /> Weak Fit (30-49%)
                       </span>
                     )}
                     {(c.category.includes('Critical Mismatch') || c.category === 'Reject') && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                         <XCircle className="w-3 h-3" /> Critical Mismatch (&lt;30%)
                       </span>
                     )}
@@ -240,11 +242,11 @@ export default function CandidateTable({
                   {/* Critical Check */}
                   <td className="py-3.5 px-4">
                     {c.criticalFlag ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-orange-500 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-md font-medium">
-                        <AlertTriangle className="w-3 h-3 text-orange-500" /> Missing Must-Have
+                      <span className="inline-flex items-center gap-1 text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md font-semibold">
+                        <AlertTriangle className="w-3 h-3 text-rose-400" /> Missing Must-Have
                       </span>
                     ) : (
-                      <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Pass ✓</span>
+                      <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pass ✓</span>
                     )}
                   </td>
 
@@ -255,13 +257,13 @@ export default function CandidateTable({
                         e.stopPropagation();
                         onSelectCandidate(c);
                       }}
-                      className={`p-1.5 rounded-lg border transition inline-flex items-center gap-1 text-xs ${
+                      className={`p-1.5 rounded-lg border transition inline-flex items-center gap-1 text-xs font-semibold ${
                         isDark
-                          ? 'text-slate-400 hover:text-white border-slate-800 hover:bg-slate-800'
-                          : 'text-slate-600 hover:text-black border-slate-200 hover:bg-slate-100'
+                          ? 'text-indigo-400 hover:text-white border-slate-800 hover:bg-indigo-600/20'
+                          : 'text-indigo-600 hover:text-indigo-800 border-slate-200 hover:bg-indigo-50'
                       }`}
                     >
-                      Details <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>

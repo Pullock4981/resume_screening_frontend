@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  FileSearch,
   LayoutDashboard,
   PlayCircle,
   BookOpen,
@@ -28,10 +27,17 @@ const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+const LinkedinIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+  </svg>
+);
+
 export type NavigationTab =
   | 'screening'
   | 'atsCheck'
   | 'githubCheck'
+  | 'linkedinCheck'
   | 'aiAssignmentCheck'
   | 'nexView'
   | 'dashboard'
@@ -45,6 +51,7 @@ export type NavigationTab =
   | 'adminScreeningHistory'
   | 'adminAtsHistory'
   | 'adminGithubHistory'
+  | 'adminLinkedinHistory'
   | 'adminNexViewHistory';
 
 interface SidebarProps {
@@ -56,6 +63,7 @@ interface SidebarProps {
   historyCount?: number;
   atsHistoryCount?: number;
   githubHistoryCount?: number;
+  linkedinHistoryCount?: number;
   nexViewHistoryCount?: number;
 }
 
@@ -68,10 +76,13 @@ export default function Sidebar({
   historyCount = 0,
   atsHistoryCount = 0,
   githubHistoryCount = 0,
+  linkedinHistoryCount = 0,
   nexViewHistoryCount = 0
 }: SidebarProps) {
   const isDark = theme === 'dark';
   const { user, isAdmin, logout } = useAuth();
+
+  const totalHistoryCount = historyCount + atsHistoryCount + githubHistoryCount + (linkedinHistoryCount || 0) + nexViewHistoryCount;
 
   const adminMenuItems = [
     {
@@ -93,28 +104,10 @@ export default function Sidebar({
       badge: null
     },
     {
-      id: 'adminScreeningHistory' as const,
-      label: 'Resume Screening History',
+      id: 'history' as const,
+      label: 'History',
       icon: History,
-      badge: historyCount > 0 ? historyCount : null
-    },
-    {
-      id: 'adminAtsHistory' as const,
-      label: 'ATS Checking History',
-      icon: FileCheck,
-      badge: atsHistoryCount > 0 ? atsHistoryCount : null
-    },
-    {
-      id: 'adminGithubHistory' as const,
-      label: 'GitHub Checking History',
-      icon: GithubIcon,
-      badge: githubHistoryCount > 0 ? githubHistoryCount : null
-    },
-    {
-      id: 'adminNexViewHistory' as const,
-      label: 'NexView Portal History',
-      icon: Tv,
-      badge: nexViewHistoryCount > 0 ? nexViewHistoryCount : null
+      badge: totalHistoryCount > 0 ? totalHistoryCount : (historyCount > 0 ? historyCount : null)
     },
     {
       id: 'aiAssignmentCheck' as const,
@@ -142,6 +135,12 @@ export default function Sidebar({
       label: 'GitHub Profile Check',
       icon: GithubIcon,
       badge: null
+    },
+    {
+      id: 'linkedinCheck' as const,
+      label: 'LinkedIn Profile Check',
+      icon: LinkedinIcon,
+      badge: 'New'
     },
     {
       id: 'aiAssignmentCheck' as const,
@@ -185,24 +184,21 @@ export default function Sidebar({
     >
       <div>
         {/* Sidebar Brand Header */}
-        <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 p-0.5 shadow-md">
-              <div className={`h-full w-full rounded-[10px] flex items-center justify-center ${isDark ? 'bg-slate-950' : 'bg-white'}`}>
-                <FileSearch className="w-5 h-5 text-indigo-500" />
-              </div>
-            </div>
-            <div>
-              <h1 className="font-extrabold text-base leading-none tracking-tight">Placement Kit</h1>
-              <span className="text-[10px] text-emerald-500 font-mono font-medium">0% AI Tokens</span>
-            </div>
+        <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div>
+            <h1 className={`font-extrabold text-lg leading-none tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Placement Kit
+            </h1>
+            <span className={`text-[10px] font-mono font-semibold mt-1.5 inline-block ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+              0% AI Tokens
+            </span>
           </div>
         </div>
 
         {/* Main Navigation Menu (Only for Non-Admin Users) */}
         {!isAdmin && (
           <div className="p-3 space-y-1">
-            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Main Menu
             </p>
 
@@ -214,30 +210,28 @@ export default function Sidebar({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     isActive
                       ? isDark
-                        ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-sm'
-                        : 'bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm'
+                        ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                        : 'bg-indigo-600 text-white shadow-sm font-bold'
                       : isDark
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
 
                   {item.badge !== null && (
                     <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                      item.id === 'nexView' || item.id === 'aiAssignmentCheck'
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                        : isActive
-                        ? 'bg-indigo-500 text-white'
+                      isActive
+                        ? 'bg-white/20 text-white'
                         : isDark
-                        ? 'bg-slate-800 text-slate-300'
-                        : 'bg-slate-200 text-slate-700'
+                        ? 'bg-slate-800 text-slate-200 border border-slate-700'
+                        : 'bg-slate-100 text-slate-800 border border-slate-200'
                     }`}>
                       {item.badge}
                     </span>
@@ -251,35 +245,41 @@ export default function Sidebar({
         {/* Admin Control Panel Menu (Only for Admin) */}
         {isAdmin && (
           <div className="p-3 pt-1 space-y-1 border-t border-slate-800/60 mt-1">
-            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Admin Control Panel
             </p>
 
             {adminMenuItems.map(item => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive = activeTab === item.id || (item.id === 'history' && ['history', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminNexViewHistory'].includes(activeTab));
 
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     isActive
                       ? isDark
-                        ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-sm'
-                        : 'bg-purple-50 text-purple-600 border border-purple-200 shadow-sm'
+                        ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                        : 'bg-indigo-600 text-white shadow-sm font-bold'
                       : isDark
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-purple-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
 
                   {item.badge !== null && (
-                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : isDark
+                        ? 'bg-slate-800 text-slate-200 border border-slate-700'
+                        : 'bg-slate-100 text-slate-800 border border-slate-200'
+                    }`}>
                       {item.badge}
                     </span>
                   )}
@@ -297,7 +297,7 @@ export default function Sidebar({
             isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
           }`}>
             <div className="flex items-center gap-2 overflow-hidden">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                 {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="overflow-hidden">
@@ -308,8 +308,8 @@ export default function Sidebar({
 
             <button
               onClick={logout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
-              title="Log out (24h session)"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+              title="Log out"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -318,7 +318,7 @@ export default function Sidebar({
 
         <button
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
-          className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+          className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
             isDark
               ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
               : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-2xs'

@@ -109,10 +109,15 @@ export interface AuthUser {
 
 export interface LoginAuditLog {
   id: string;
-  username: string;
+  username?: string;
   ip?: string;
-  timestamp: string;
-  status: 'SUCCESS' | 'FAILED';
+  timestamp?: string;
+  status?: string;
+  email?: string;
+  role?: string;
+  loginTime?: string;
+  details?: string;
+  [key: string]: any;
 }
 
 export interface GithubCheckItem {
@@ -124,4 +129,53 @@ export interface GithubCheckItem {
   forks?: number;
   commits?: number;
   [key: string]: any;
+}
+
+export interface LinkedinRubricItem {
+  id: string;
+  title: string;
+  criterion: string;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  status?: 'pass' | 'fail' | 'partial';
+  detail: string;
+}
+
+export interface LinkedinCheckItem {
+  id: string;
+  username: string;
+  name: string;
+  profileUrl: string;
+  email?: string;
+  phone?: string;
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  grade: string;
+  gradeColor: string;
+  passedCount: number;
+  partialCount: number;
+  missingCount: number;
+  headline?: string;
+  aboutSummary?: string;
+  breakdown: LinkedinRubricItem[];
+  presentItems?: string;
+  missingItems?: string;
+  [key: string]: any;
+}
+
+export interface LinkedinHistoryRecord {
+  id: string;
+  operationName: string;
+  timestamp: string;
+  dateFormatted: string;
+  studentSheetUrl: string;
+  totalCandidates: number;
+  excellentCount: number;
+  strongCount: number;
+  moderateCount: number;
+  needsImprovementCount: number;
+  userEmail?: string;
+  results: LinkedinCheckItem[];
 }
