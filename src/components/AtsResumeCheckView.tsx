@@ -52,9 +52,9 @@ export const AtsResumeCheckView: React.FC<Props> = ({ theme = 'dark', onSaveHist
     setProgressCount({ completed: 0, total: 0 });
 
     try {
-      const backendUrl = typeof window !== 'undefined'
-        ? (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '')
-        : 'http://localhost:5000';
+      const backendUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:5000'
+        : process.env.NEXT_PUBLIC_BACKEND_URL || 'https://resume-screening-backend.vercel.app';
 
       const payload: any = {
         sheetUrl: sheetUrl.trim(),

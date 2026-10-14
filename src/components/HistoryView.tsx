@@ -371,22 +371,22 @@ export default function HistoryView({
   });
 
   const STANDARD_LINKEDIN_CRITERIA = [
-    { id: 'photo', title: 'Professional Profile Photo', criterion: 'Professional profile photo with clean background', maxScore: 4 },
+    { id: 'photo', title: 'Professional Profile Photo', criterion: 'Professional profile photo with clean background', maxScore: 5 },
     { id: 'cover', title: 'Relevant Background (Cover) Image', criterion: 'Relevant background (cover) image added', maxScore: 5 },
-    { id: 'headline', title: 'Compelling Headline', criterion: 'Compelling headline reflecting skills/role', maxScore: 3 },
+    { id: 'headline', title: 'Compelling Headline', criterion: 'Compelling headline reflecting skills/role', maxScore: 4 },
     { id: 'customUrl', title: 'Custom LinkedIn URL', criterion: 'Custom LinkedIn URL (clean & professional)', maxScore: 2 },
     { id: 'aboutSection', title: 'Well-written About Section', criterion: 'Well-written About section with expertise, achievements, and goals', maxScore: 5 },
     { id: 'aboutBullet', title: 'About Section Formatting', criterion: 'About section includes bullet points and contact info', maxScore: 3 },
-    { id: 'experience', title: 'Experience Section', criterion: 'Experience section (if available) with title, company, duration', maxScore: 3 },
+    { id: 'experience', title: 'Experience Section', criterion: 'Experience section with title, company, duration', maxScore: 4 },
     { id: 'projectsOpenSource', title: 'Freelance & Open Source Projects', criterion: 'Freelance/open-source projects mentioned properly (if applicable)', maxScore: 3 },
     { id: 'skills', title: 'Minimum 12 Skills Listed', criterion: 'Minimum 12 skills added across languages, frameworks, tools', maxScore: 6 },
     { id: 'qualityProjects', title: 'At Least 2 Quality Projects', criterion: 'At least 2 quality projects added with name, description, and live link', maxScore: 8 },
     { id: 'projectMedia', title: 'Project Media Screenshots', criterion: 'Project media section includes homepage screenshot', maxScore: 2 },
     { id: 'projectSkills', title: 'Project Skills Mentioned', criterion: 'Project skills mentioned clearly', maxScore: 4 },
-    { id: 'certifications', title: 'Certifications with Details', criterion: 'Certifications added with proper details (name, org, date)', maxScore: 4 },
-    { id: 'education', title: 'Latest Education Details', criterion: 'Latest education added with degree, institute, dates', maxScore: 3 },
+    { id: 'education', title: 'Latest Education Details', criterion: 'Latest education added with degree, institute, dates', maxScore: 4 },
     { id: 'eduCoursework', title: 'Coursework or Related Projects', criterion: 'Education section includes coursework or related projects', maxScore: 2 },
-    { id: 'languages', title: 'Languages Section Filled', criterion: 'Languages section filled with known languages', maxScore: 3 }
+    { id: 'languages', title: 'Languages Section Filled', criterion: 'Languages section filled with known languages', maxScore: 3 },
+    { id: 'certifications', title: 'Certifications (Optional Bonus)', criterion: 'Certifications added with proper details (Optional Bonus)', maxScore: 4, isBonus: true }
   ];
 
   const getLinkedinBreakdown = (candidate: any) => {
@@ -394,6 +394,7 @@ export default function HistoryView({
       return candidate.breakdown.map((item: any) => {
         // If present or passed, award full marks (maxScore). No partial marks!
         const isPassed = Boolean(item.passed || item.status === 'pass' || (item.score !== undefined && item.score > 0));
+        const isBonus = Boolean(item.isBonus || item.id === 'certifications');
         return {
           id: item.id || item.title,
           title: item.title,
@@ -401,8 +402,9 @@ export default function HistoryView({
           score: isPassed ? item.maxScore : 0,
           maxScore: item.maxScore,
           passed: isPassed,
-          status: isPassed ? 'pass' : 'fail',
-          detail: item.detail || (isPassed ? `Requirement verified and passed (+${item.maxScore}/${item.maxScore} Marks).` : `Missing in profile (0/${item.maxScore} Marks).`)
+          isBonus,
+          status: isPassed ? 'pass' : (isBonus ? 'optional' : 'fail'),
+          detail: item.detail || (isPassed ? (isBonus ? `Optional Bonus: Certifications & credentials added (+${item.maxScore} Bonus Marks).` : `Requirement verified and passed (+${item.maxScore}/${item.maxScore} Marks).`) : (isBonus ? `Optional Bonus: No certifications attached (No penalty applied).` : `Missing in profile (0/${item.maxScore} Marks).`))
         };
       });
     }

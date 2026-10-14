@@ -140,6 +140,7 @@ export interface LinkedinRubricItem {
   passed: boolean;
   status?: 'pass' | 'fail' | 'partial';
   detail: string;
+  isBonus?: boolean;
 }
 
 export interface LinkedinCheckItem {

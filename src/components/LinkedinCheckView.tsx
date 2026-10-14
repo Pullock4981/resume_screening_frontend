@@ -23,6 +23,7 @@ import {
   Filter
 } from 'lucide-react';
 import { LinkedinCheckItem } from '../types';
+import { safeSaveToLocalStorage } from '../utils/safeStorage';
 import ProgressBar from './ProgressBar';
 import { useAuth } from '../context/AuthContext';
 
@@ -51,14 +52,19 @@ export function normalizeLinkedinResult(item: LinkedinCheckItem): LinkedinCheckI
     };
   });
 
-  const totalScore = normalizedBreakdown.length > 0
-    ? normalizedBreakdown.reduce((sum, b) => sum + (b.score || 0), 0)
-    : item.totalScore;
-  const percentage = Math.round((totalScore / 60) * 100);
+  // Base 15 required criteria sum to 60 marks
+  const coreItems = normalizedBreakdown.filter(b => !b.isBonus);
+  const coreScore = coreItems.reduce((sum, b) => sum + (b.score || 0), 0);
+  const bonusItems = normalizedBreakdown.filter(b => b.isBonus);
+  const bonusScore = bonusItems.reduce((sum, b) => sum + (b.score || 0), 0);
+
+  // Total score strictly capped at 60 (marking is strictly out of 60, NEVER 64!)
+  const totalScore = Math.min(60, coreScore + bonusScore);
+  const percentage = Math.min(100, Math.round((totalScore / 60) * 100));
   const grade = totalScore >= 50 ? 'Excellent Profile' : totalScore >= 40 ? 'Strong Profile' : totalScore >= 30 ? 'Moderate Profile' : 'Needs Improvement';
   const gradeColor = totalScore >= 50 ? 'emerald' : totalScore >= 40 ? 'indigo' : totalScore >= 30 ? 'amber' : 'rose';
   const passedCount = normalizedBreakdown.filter(b => b.passed).length;
-  const missingCount = normalizedBreakdown.filter(b => !b.passed).length;
+  const missingCount = normalizedBreakdown.filter(b => !b.isBonus && !b.passed).length;
 
   return {
     ...item,
@@ -124,12 +130,12 @@ export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord
       const existing = localStorage.getItem('linkedin_check_history');
       const list = existing ? JSON.parse(existing) : [];
       const updated = [record, ...list];
-      localStorage.setItem('linkedin_check_history', JSON.stringify(updated));
+      safeSaveToLocalStorage('linkedin_check_history', updated);
       if (onSaveHistoryRecord) {
         onSaveHistoryRecord(record);
       }
     } catch (e) {
-      console.error('Failed to save LinkedIn history record:', e);
+      console.warn('Failed to save LinkedIn history record:', e);
     }
   };
 
@@ -198,7 +204,7 @@ export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord
                   setResults(prev => {
                     const norm = normalizeLinkedinResult(chunk.result);
                     const filtered = prev.filter(p => p.profileUrl !== norm.profileUrl || p.name !== norm.name);
-                    return [norm, ...filtered].slice(0, 50);
+                    return [norm, ...filtered];
                   });
                 }
               } else if (chunk.status === 'completed') {
@@ -321,13 +327,13 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border ${
             isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
           }`}>
-            <UserCheck size={14} /> 60-Point Standard LinkedIn Profile Rubric (16 Checkpoints)
+            <UserCheck size={14} /> 60-Point Standard LinkedIn Profile Rubric (15 Checkpoints + Bonus)
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
             LinkedIn Profile <span className="text-indigo-600 dark:text-indigo-400">Auditor</span>
           </h1>
           <p className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Audit candidate LinkedIn profiles against 16 quantitative criteria (Photo, Cover banner, Headline, Custom URL, About section, Experience, 12+ Skills, Featured Projects, Media, Certifications, Education & Languages).
+            Audit candidate LinkedIn profiles against 15 quantitative criteria (Photo, Cover banner, Headline, Custom URL, About section, Experience, 12+ Skills, Featured Projects, Media, Education & Languages) + Optional Certifications Bonus.
           </p>
         </div>
       </div>
@@ -789,21 +795,24 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                   </div>
                 </div>
 
-                {/* 16 Checkpoints List */}
+                {/* Criteria Checkpoints List */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Detailed Criteria Breakdown (16 Rubric Items)
+                    Detailed Criteria Breakdown (15 Core Checkpoints + Bonus)
                   </h4>
 
                   <div className="space-y-2.5">
                     {(item.breakdown || []).map((crit, idx) => {
                       const isFull = Boolean(crit.passed || crit.score === crit.maxScore);
+                      const isBonus = Boolean(crit.isBonus);
 
                       return (
                         <div
                           key={crit.id || idx}
                           className={`p-3.5 rounded-xl border text-xs transition ${
-                            isFull
+                            isBonus
+                              ? isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'
+                              : isFull
                               ? isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-white border-slate-200'
                               : isDark ? 'bg-rose-500/5 border-rose-500/20' : 'bg-rose-50/50 border-rose-200'
                           }`}
@@ -811,22 +820,35 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <div className="flex items-center gap-2">
                               <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${
-                                isFull
+                                isBonus
+                                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                                  : isFull
                                   ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                                   : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                               }`}>
-                                {idx + 1}
+                                {isBonus ? '★' : idx + 1}
                               </span>
-                              <span className="font-bold text-slate-900 dark:text-white">{crit.criterion}</span>
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                {crit.criterion}
+                                {isBonus && (
+                                  <span className="ml-1.5 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                    BONUS
+                                  </span>
+                                )}
+                              </span>
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${
-                                isFull
+                                isBonus
+                                  ? isFull
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                    : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                  : isFull
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                               }`}>
-                                {isFull ? `+${crit.maxScore} / ${crit.maxScore}` : `0 / ${crit.maxScore}`}
+                                {isBonus ? (isFull ? `+${crit.score} BONUS` : 'OPTIONAL') : (isFull ? `+${crit.maxScore} / ${crit.maxScore}` : `0 / ${crit.maxScore}`)}
                               </span>
                             </div>
                           </div>

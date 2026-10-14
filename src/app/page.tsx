@@ -22,6 +22,7 @@ import AuthView from '../components/AuthView';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CandidateResult, AtsHistoryRecord, NexViewRecord, LinkedinHistoryRecord } from '../types';
 import { ROUTE_CONFIG, getTabFromPathname } from '../utils/routes';
+import { safeSaveToLocalStorage } from '../utils/safeStorage';
 
 function MainAppContent() {
   const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
@@ -111,14 +112,10 @@ function MainAppContent() {
     syncHistoryWithGoogleSheets();
   }, []);
 
-  // Save history to localStorage
+  // Save history to state and safely to localStorage (with quota overflow protection)
   const saveHistoryToStorage = (updated: HistoryRecord[]) => {
     setHistoryRecords(updated);
-    try {
-      localStorage.setItem('screening_history', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to save screening history:', e);
-    }
+    safeSaveToLocalStorage('screening_history', updated);
   };
 
   const syncHistoryWithGoogleSheets = async () => {
@@ -369,7 +366,7 @@ function MainAppContent() {
   const handleSaveAtsRecord = (newRecord: AtsHistoryRecord) => {
     setAtsHistoryRecords(prev => {
       const updated = [newRecord, ...prev];
-      try { localStorage.setItem('ats_check_history', JSON.stringify(updated)); } catch (e) {}
+      safeSaveToLocalStorage('ats_check_history', updated);
       return updated;
     });
     syncHistoryWithGoogleSheets();
@@ -387,7 +384,7 @@ function MainAppContent() {
   const handleSaveGithubRecord = (newRecord: any) => {
     setGithubHistoryRecords(prev => {
       const updated = [newRecord, ...prev];
-      try { localStorage.setItem('github_check_history', JSON.stringify(updated)); } catch (e) {}
+      safeSaveToLocalStorage('github_check_history', updated);
       return updated;
     });
     syncHistoryWithGoogleSheets();
@@ -396,7 +393,7 @@ function MainAppContent() {
   const handleSaveLinkedinRecord = (newRecord: any) => {
     setLinkedinHistoryRecords(prev => {
       const updated = [newRecord, ...prev];
-      try { localStorage.setItem('linkedin_check_history', JSON.stringify(updated)); } catch (e) {}
+      safeSaveToLocalStorage('linkedin_check_history', updated);
       return updated;
     });
     syncHistoryWithGoogleSheets();

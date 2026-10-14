@@ -74,7 +74,7 @@ export default function CandidateDetailModal({ candidate, onClose, theme = 'dark
               <div>
                 <h4 className="text-xs font-bold text-rose-400 uppercase">Critical Requirement Missing Flag</h4>
                 <p className="text-xs text-rose-300/90 mt-0.5">
-                  This candidate is missing one or more essential Must-Have requirements ({candidate.matchingResults.criticalMissing.join(', ')}). A 10% penalty was applied to their final score.
+                  This candidate is missing one or more essential Must-Have requirements ({candidate.matchingResults?.criticalMissing?.join(', ') || 'Core Skills'}). A 10% penalty was applied to their final score.
                 </p>
               </div>
             </div>

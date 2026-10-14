@@ -24,6 +24,7 @@ import {
   Eye
 } from 'lucide-react';
 import { GithubCheckItem } from '../types';
+import { safeSaveToLocalStorage } from '../utils/safeStorage';
 import ProgressBar from './ProgressBar';
 import { useAuth } from '../context/AuthContext';
 
@@ -85,12 +86,12 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
       const existing = localStorage.getItem('github_check_history');
       const list = existing ? JSON.parse(existing) : [];
       const updated = [record, ...list];
-      localStorage.setItem('github_check_history', JSON.stringify(updated));
+      safeSaveToLocalStorage('github_check_history', updated);
       if (onSaveHistoryRecord) {
         onSaveHistoryRecord(record);
       }
     } catch (e) {
-      console.error('Failed to save GitHub history record:', e);
+      console.warn('Failed to save GitHub history record:', e);
     }
   };
 
