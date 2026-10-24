@@ -102,25 +102,19 @@ export default function Sidebar({
       label: 'User Activity Audit Logs',
       icon: Clock,
       badge: null
-    },
-    {
-      id: 'history' as const,
-      label: 'History',
-      icon: History,
-      badge: totalHistoryCount > 0 ? totalHistoryCount : (historyCount > 0 ? historyCount : null)
-    },
-    {
-      id: 'aiAssignmentCheck' as const,
-      label: 'AI Assignment Check',
-      icon: Sparkles,
-      badge: 'Live'
     }
   ];
 
   const userMenuItems = [
     {
+      id: 'dashboard' as const,
+      label: 'Personal Dashboard',
+      icon: LayoutDashboard,
+      badge: 'My Stats'
+    },
+    {
       id: 'screening' as const,
-      label: 'New Screening',
+      label: 'Resume Screening',
       icon: PlayCircle,
       badge: null
     },
@@ -158,7 +152,7 @@ export default function Sidebar({
       id: 'history' as const,
       label: 'Screening History',
       icon: History,
-      badge: historyCount > 0 ? historyCount : null
+      badge: (isAdmin ? totalHistoryCount : historyCount) > 0 ? (isAdmin ? totalHistoryCount : historyCount) : null
     },
     {
       id: 'dictionary' as const,
@@ -183,26 +177,46 @@ export default function Sidebar({
       }`}
     >
       <div>
-        {/* Sidebar Brand Header */}
-        <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-          <div>
-            <h1 className={`font-extrabold text-lg leading-none tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        {/* Sidebar Brand Header (Clickable link to User Dashboard) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
+          title="Go to User Dashboard"
+          className={`w-full h-16 px-5 flex items-center gap-3 text-left transition-all duration-200 cursor-pointer group ${
+            activeTab === 'dashboard'
+              ? isDark
+                ? 'bg-indigo-950/30'
+                : 'bg-indigo-50/70'
+              : isDark
+              ? 'hover:bg-slate-900/60'
+              : 'hover:bg-slate-50'
+          }`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center p-1.5 shrink-0 shadow-xs group-hover:scale-105 group-hover:border-indigo-500/40 transition-transform">
+            <img
+              src="/assats/placement-logo.png"
+              alt="Placement Kit"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className={`font-extrabold text-base leading-none tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Placement Kit
             </h1>
-            <span className={`text-[10px] font-mono font-semibold mt-1.5 inline-block ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+            <span className={`text-[10px] font-mono font-semibold mt-1 inline-block ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
               0% AI Tokens
             </span>
           </div>
-        </div>
+        </button>
 
-        {/* Main Navigation Menu (Only for Non-Admin Users) */}
-        {!isAdmin && (
+        {/* Admin Control Panel Menu (Only for Admin) */}
+        {isAdmin && (
           <div className="p-3 space-y-1">
-            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Main Menu
+            <p className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Admin Control Panel
             </p>
 
-            {userMenuItems.map(item => {
+            {adminMenuItems.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
 
@@ -242,72 +256,86 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Admin Control Panel Menu (Only for Admin) */}
-        {isAdmin && (
-          <div className="p-3 pt-1 space-y-1 border-t border-slate-800/60 mt-1">
-            <p className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Admin Control Panel
-            </p>
+        {/* Main Navigation Menu (Available to all users, including Admin) */}
+        <div className="p-3 space-y-1">
+          <p className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            Main Menu
+          </p>
 
-            {adminMenuItems.map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id || (item.id === 'history' && ['history', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminNexViewHistory'].includes(activeTab));
+          {userMenuItems.map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id || (item.id === 'history' && ['history', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory'].includes(activeTab));
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  isActive
+                    ? isDark
+                      ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                      : 'bg-indigo-600 text-white shadow-sm font-bold'
+                    : isDark
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                    : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                  <span>{item.label}</span>
+                </div>
+
+                {item.badge !== null && (
+                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
                     isActive
-                      ? isDark
-                        ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                        : 'bg-indigo-600 text-white shadow-sm font-bold'
+                      ? 'bg-white/20 text-white'
                       : isDark
-                      ? 'text-slate-300 hover:text-white hover:bg-slate-900'
-                      : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                    <span>{item.label}</span>
-                  </div>
-
-                  {item.badge !== null && (
-                    <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : isDark
-                        ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                        : 'bg-slate-100 text-slate-800 border border-slate-200'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+                      ? 'bg-slate-800 text-slate-200 border border-slate-700'
+                      : 'bg-slate-100 text-slate-800 border border-slate-200'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Sidebar Footer & User Auth Box */}
       <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
         {user && (
-          <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
-            isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-2xs'
-          }`}>
+          <div
+            onClick={() => setActiveTab('dashboard')}
+            className={`p-3 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer select-none ${
+              activeTab === 'dashboard'
+                ? isDark
+                  ? 'bg-indigo-600/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
+                  : 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-1 ring-indigo-200'
+                : isDark
+                ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-2xs'
+            }`}
+            title="Click to view Personal Dashboard & Activity Stats"
+          >
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                 {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="overflow-hidden">
-                <div className="font-bold truncate text-[11px]">{user.name}</div>
+                <div className="font-bold truncate text-[11px] flex items-center gap-1.5">
+                  <span>{user.name}</span>
+                  <span className="text-[9px] text-slate-400 font-normal">› Dashboard</span>
+                </div>
                 <div className="text-[9px] uppercase font-mono text-indigo-400 font-semibold">{user.role}</div>
               </div>
             </div>
 
             <button
-              onClick={logout}
+              onClick={(e) => {
+                e.stopPropagation();
+                logout();
+              }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
               title="Log out"
             >

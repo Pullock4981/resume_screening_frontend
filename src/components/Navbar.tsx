@@ -8,9 +8,10 @@ interface NavbarProps {
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   activeTab?: NavigationTab;
+  onNavigateTab?: (tab: NavigationTab) => void;
 }
 
-export default function Navbar({ theme, setTheme, activeTab = 'screening' }: NavbarProps) {
+export default function Navbar({ theme, setTheme, activeTab = 'screening', onNavigateTab }: NavbarProps) {
   const isDark = theme === 'dark';
   const { user, isAdmin, logout } = useAuth();
 
@@ -23,12 +24,20 @@ export default function Navbar({ theme, setTheme, activeTab = 'screening' }: Nav
   }, [routeMeta.title]);
 
   return (
-    <header className={`w-full border-b backdrop-blur-md sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between transition-colors duration-200 ${
+    <header className={`w-full h-16 border-b backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between transition-colors duration-200 ${
       isDark
         ? 'bg-slate-950/80 border-slate-800 text-slate-100'
         : 'bg-white/80 border-slate-200 text-slate-800 shadow-2xs'
     }`}>
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onNavigateTab && onNavigateTab('dashboard')}
+          title="Go to User Dashboard"
+          className="md:hidden w-8 h-8 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center p-1 shrink-0 cursor-pointer hover:scale-105 transition-transform"
+        >
+          <img src="/assats/placement-logo.png" alt="Placement Kit" className="w-full h-full object-contain" />
+        </button>
         <div>
           <div className="flex items-center gap-2">
             <h2 className={`text-base font-extrabold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -59,10 +68,20 @@ export default function Navbar({ theme, setTheme, activeTab = 'screening' }: Nav
         </div>
 
         {user && (
-          <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border ${
-            isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-100 border-slate-200 text-slate-900'
-          }`}>
-            <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px]">
+          <div
+            onClick={() => onNavigateTab && onNavigateTab('dashboard')}
+            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition cursor-pointer select-none ${
+              activeTab === 'dashboard'
+                ? isDark
+                  ? 'bg-indigo-600/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
+                  : 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-1 ring-indigo-200'
+                : isDark
+                ? 'bg-slate-900 border-slate-800 text-white hover:border-indigo-500/50 hover:bg-slate-800/80'
+                : 'bg-slate-100 border-slate-200 text-slate-900 hover:border-indigo-400 hover:bg-slate-200/60'
+            }`}
+            title="Click to view your Personal Dashboard & Activity Stats"
+          >
+            <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px] shadow-sm">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="hidden sm:block text-left">
@@ -70,8 +89,11 @@ export default function Navbar({ theme, setTheme, activeTab = 'screening' }: Nav
               <span className={`text-[9px] uppercase font-mono font-semibold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>{user.role}</span>
             </div>
             <button
-              onClick={logout}
-              className={`p-1 rounded transition ml-1 ${isDark ? 'text-slate-400 hover:text-rose-400' : 'text-slate-500 hover:text-rose-600'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                logout();
+              }}
+              className={`p-1 rounded transition ml-1 ${isDark ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'}`}
               title="Logout"
             >
               <LogOut className="w-3.5 h-3.5" />

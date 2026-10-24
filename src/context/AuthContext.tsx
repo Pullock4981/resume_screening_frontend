@@ -10,7 +10,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<{ pendingApproval?: boolean; message?: string; success?: boolean }>;
+  register: (name: string, email: string, password: string, team?: string) => Promise<{ pendingApproval?: boolean; message?: string; success?: boolean }>;
   logout: () => void;
   authError: string | null;
   setAuthError: (err: string | null) => void;
@@ -162,13 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, team?: string) => {
     setAuthError(null);
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, team })
       });
 
       const data = await res.json();

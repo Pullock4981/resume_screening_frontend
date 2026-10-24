@@ -12,7 +12,7 @@ export const ROUTE_CONFIG: Record<NavigationTab, RouteMeta> = {
   screening: {
     tab: 'screening',
     path: '/screening',
-    title: 'New Candidate Screening',
+    title: 'Resume Screening',
     badge: 'Screening Engine'
   },
   atsCheck: {
@@ -48,8 +48,8 @@ export const ROUTE_CONFIG: Record<NavigationTab, RouteMeta> = {
   dashboard: {
     tab: 'dashboard',
     path: '/dashboard',
-    title: 'Project Screening Dashboard',
-    badge: 'Analytics'
+    title: 'Personal Dashboard',
+    badge: 'User Activity'
   },
   history: {
     tab: 'history',

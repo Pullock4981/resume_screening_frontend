@@ -27,6 +27,7 @@ export interface HistoryRecord {
   waitingListCount: number;
   notMatchingCount: number;
   candidates: CandidateResult[];
+  userEmail?: string;
 }
 
 export interface GithubHistoryRecord {

@@ -20,7 +20,12 @@ import {
   Eye,
   Download,
   Search,
-  Filter
+  Filter,
+  ChevronDown,
+  BookOpen,
+  Sliders,
+  Briefcase,
+  Database
 } from 'lucide-react';
 import { LinkedinCheckItem } from '../types';
 import { safeSaveToLocalStorage } from '../utils/safeStorage';
@@ -42,29 +47,37 @@ export function normalizeLinkedinResult(item: LinkedinCheckItem): LinkedinCheckI
   if (!item) return item;
   const rawBreakdown = item.breakdown || [];
   const normalizedBreakdown = rawBreakdown.map((crit) => {
-    // If present or passed -> award full marks (maxScore), otherwise 0. No partial marks!
-    const isPresent = Boolean(crit.passed || (crit.score !== undefined && crit.score > 0) || crit.status === 'pass');
+    // Preserve partial marks and calculate status accurately
+    const maxScore = Number(crit.maxScore) || 0;
+    const score = crit.score !== undefined ? Number(crit.score) : (crit.passed ? maxScore : 0);
+    const isFull = score >= maxScore && maxScore > 0;
+    const isPartial = score > 0 && score < maxScore;
+    const status = isFull ? ('pass' as const) : isPartial ? ('partial' as const) : ('fail' as const);
+
     return {
       ...crit,
-      passed: isPresent,
-      score: isPresent ? crit.maxScore : 0,
-      status: isPresent ? ('pass' as const) : ('fail' as const)
+      score,
+      maxScore,
+      passed: isFull,
+      status
     };
   });
 
-  // Base 15 required criteria sum to 60 marks
+  // Base 14 required criteria sum to 60 marks
   const coreItems = normalizedBreakdown.filter(b => !b.isBonus);
   const coreScore = coreItems.reduce((sum, b) => sum + (b.score || 0), 0);
   const bonusItems = normalizedBreakdown.filter(b => b.isBonus);
   const bonusScore = bonusItems.reduce((sum, b) => sum + (b.score || 0), 0);
 
-  // Total score strictly capped at 60 (marking is strictly out of 60, NEVER 64!)
-  const totalScore = Math.min(60, coreScore + bonusScore);
+  // Total score strictly capped at 60 (rounded cleanly)
+  const totalScore = Math.min(60, Math.round(coreScore + bonusScore));
   const percentage = Math.min(100, Math.round((totalScore / 60) * 100));
   const grade = totalScore >= 50 ? 'Excellent Profile' : totalScore >= 40 ? 'Strong Profile' : totalScore >= 30 ? 'Moderate Profile' : 'Needs Improvement';
   const gradeColor = totalScore >= 50 ? 'emerald' : totalScore >= 40 ? 'indigo' : totalScore >= 30 ? 'amber' : 'rose';
-  const passedCount = normalizedBreakdown.filter(b => b.passed).length;
-  const missingCount = normalizedBreakdown.filter(b => !b.isBonus && !b.passed).length;
+  
+  const passedCount = normalizedBreakdown.filter(b => b.score === b.maxScore).length;
+  const partialCount = normalizedBreakdown.filter(b => !b.isBonus && b.score > 0 && b.score < b.maxScore).length;
+  const missingCount = normalizedBreakdown.filter(b => !b.isBonus && b.score === 0).length;
 
   return {
     ...item,
@@ -74,8 +87,8 @@ export function normalizeLinkedinResult(item: LinkedinCheckItem): LinkedinCheckI
     grade,
     gradeColor,
     passedCount,
-    missingCount,
-    partialCount: 0
+    partialCount,
+    missingCount
   };
 }
 
@@ -83,7 +96,7 @@ const DEFAULT_MASTER_SHEET = 'https://docs.google.com/spreadsheets/d/1O84kcu_A4V
 
 export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord }: LinkedinCheckViewProps) {
   const isDark = theme === 'dark';
-  const { token } = useAuth();
+  const { user, token } = useAuth();
 
   const [inputUrl, setInputUrl] = useState('');
   const masterSheetUrl = DEFAULT_MASTER_SHEET;
@@ -99,6 +112,7 @@ export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord
   const [filterGrade, setFilterGrade] = useState<'all' | 'excellent' | 'strong' | 'moderate' | 'improvement'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [showGuide, setShowGuide] = useState(false);
 
   const getBackendUrl = () => {
     if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -123,6 +137,7 @@ export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord
       strongCount: normalizedList.filter(r => (r.totalScore || 0) >= 40 && (r.totalScore || 0) < 50).length,
       moderateCount: normalizedList.filter(r => (r.totalScore || 0) >= 30 && (r.totalScore || 0) < 40).length,
       needsImprovementCount: normalizedList.filter(r => (r.totalScore || 0) < 30).length,
+      userEmail: user?.email || 'user@system.com',
       results: normalizedList
     };
 
@@ -167,7 +182,7 @@ export default function LinkedinCheckView({ theme = 'light', onSaveHistoryRecord
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ ...payload, email: user?.email, userEmail: user?.email })
       });
 
       if (!response.ok) {
@@ -314,100 +329,262 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
       {/* Header Banner */}
-      <div className={`p-6 sm:p-8 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+      <div className={`p-6 sm:p-7 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
         isDark
-          ? 'bg-slate-900/80 border-slate-800 text-white shadow-xl backdrop-blur-md'
-          : 'bg-white border-slate-200 text-slate-900 shadow-md'
+          ? 'bg-slate-900 border-slate-800 text-white shadow-xl'
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       }`}>
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <LinkedinIcon size={240} className={isDark ? 'text-indigo-500/20' : 'text-indigo-600/15'} />
-        </div>
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+              isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+            }`}>
+              <UserCheck size={13} /> 60-Point Standard LinkedIn Rubric
+            </div>
 
-        <div className="relative z-10 max-w-3xl">
-          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border ${
-            isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-          }`}>
-            <UserCheck size={14} /> 60-Point Standard LinkedIn Profile Rubric (15 Checkpoints + Bonus)
+            <button
+              type="button"
+              onClick={() => setShowGuide(!showGuide)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                showGuide
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  : isDark
+                  ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <BookOpen size={13} />
+              <span>{showGuide ? 'Hide Evaluation Guidelines' : 'View 10 Evaluation Criteria'}</span>
+              <ChevronDown size={13} className={`transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`} />
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
+
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">
             LinkedIn Profile <span className="text-indigo-600 dark:text-indigo-400">Auditor</span>
           </h1>
-          <p className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Audit candidate LinkedIn profiles against 15 quantitative criteria (Photo, Cover banner, Headline, Custom URL, About section, Experience, 12+ Skills, Featured Projects, Media, Education & Languages) + Optional Certifications Bonus.
+          <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            Audit candidate profiles against official standards for profile basics, about summary, experience depth, featured projects, and skills.
           </p>
         </div>
       </div>
 
-      {/* Input Form Card */}
-      <div className={`p-6 rounded-2xl border ${
-        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-      }`}>
-        <form onSubmit={handleEvaluate} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                Candidate Sheet URL or LinkedIn Profile URL / Username <span className="text-indigo-600 dark:text-indigo-400">*</span>
-              </label>
-              <div className="relative">
-                <LinkedinIcon size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                <input
-                  type="text"
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/... OR https://linkedin.com/in/username"
-                  required
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm transition-all outline-none ${
-                    isDark
-                      ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  }`}
-                />
+      {/* 10 Guidelines Card / Drawer */}
+      {showGuide && (
+        <div className={`p-6 rounded-2xl border transition-all animate-fadeIn ${
+          isDark ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-indigo-50/40 border-indigo-100 text-slate-900'
+        }`}>
+          <div className="flex items-center justify-between pb-3 border-b border-indigo-500/10 mb-4">
+            <h3 className="text-sm font-extrabold flex items-center gap-2 text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              <Sparkles size={16} /> LinkedIn Profile Rubric (10 Core Evaluation Guidelines • 60 Points)
+            </h3>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Total: 60 Marks (14 Core + 1 Bonus)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>1. Profile Basics</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">15 Marks</span>
               </div>
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Accepts single LinkedIn URL (e.g. linkedin.com/in/yourname) or batch candidate Google Sheet.
+              <ul className="space-y-1 list-disc list-inside text-slate-600 dark:text-slate-300 leading-relaxed">
+                <li><strong>Profile Photo (4m):</strong> High-quality, professional headshot with neutral background & clean attire.</li>
+                <li><strong>Background Photo (4m):</strong> Relevant banner image (tech-themed, abstract code, personal brand).</li>
+                <li><strong>Headline (4m):</strong> Compelling headline reflecting expertise and target field.</li>
+                <li><strong>Custom URL (3m):</strong> Clean custom URL (e.g. <code className="text-[11px] bg-slate-500/10 px-1 py-0.5 rounded">linkedin.com/in/yourname</code>).</li>
+              </ul>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>2. About Section</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">9 Marks</span>
+              </div>
+              <ul className="space-y-1 list-disc list-inside text-slate-600 dark:text-slate-300 leading-relaxed">
+                <li><strong>About Content (5m):</strong> Bullet points with Personal Engagement, Technical Expertise, Career Achievements, Passion & Goals.</li>
+                <li><strong>Contact Info (4m):</strong> Email, portfolio URL & phone number with country code at the bottom.</li>
+              </ul>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>3. Experience Section</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">5 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Specific role title (e.g. Web Developer), quantifiable outcomes (e.g. &ldquo;Increased website speed by 40%&rdquo;), responsibilities/impact, projects/tech stack, and freelance/open-source projects.
               </p>
             </div>
 
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>4. Featured Section</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">4 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Add at least <strong>2 features</strong> highlighting your best showcase projects, live links, technical articles, or media.
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>5. Skills Section</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">6 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Add at least <strong>10–15 key skills</strong>: Programming languages (JS, Python), frameworks/libraries (React, Angular), tools (Git, Docker, AWS), and interpersonal skills.
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>6. Projects Section</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">9 Marks</span>
+              </div>
+              <ul className="space-y-1 list-disc list-inside text-slate-600 dark:text-slate-300 leading-relaxed">
+                <li><strong>2+ Key Projects (5m):</strong> Project names, descriptions, tech stack, and GitHub repository links.</li>
+                <li><strong>Features & Media (4m):</strong> Highlight 3-4 main features, live demo links, tagged skills, and homepage screenshots.</li>
+              </ul>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>7. Certifications (If you have any)</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">4 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Relevant certifications (FreeCodeCamp, Coursera, Google UX, AWS Certified Developer, etc.) with issuing organizations and completion dates.
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>8. Education (Last Education Focus)</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">4 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Focus on last education: Degree (e.g. Bachelor&apos;s in CS/Diploma), institute, relevant coursework or projects. <em>(School/college students should avoid).</em>
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1 flex justify-between">
+                <span>9. Languages</span>
+                <span className="font-black text-slate-700 dark:text-slate-300">4 Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                All known languages with proficiency levels (e.g. Bangla - Native, English - Professional Working, Hindi).
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'}`}>
+              <div className="font-bold text-amber-600 dark:text-amber-400 mb-1 flex justify-between">
+                <span>10. Volunteer Experience</span>
+                <span className="font-black text-amber-600 dark:text-amber-400">+3 Bonus Marks</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Optional but recommended: Participation in any community, club, social or open-source projects (Adds bonus marks without penalizing if missing).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Input Form Card */}
+      <div className={`p-5 sm:p-6 rounded-2xl border ${
+        isDark ? 'bg-slate-900 border-slate-800 text-slate-100 shadow-xl' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+      }`}>
+        {/* Card Header */}
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400">
+              <Sliders className="w-4 h-4" />
+            </div>
             <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                Operation Title (Optional)
+              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Audit Parameters
+              </h3>
+              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Provide candidate Google Sheet or a direct LinkedIn profile link
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleEvaluate} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div>
+              <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <LinkedinIcon size={14} className="text-indigo-500" />
+                Candidate Sheet URL or Profile Link <span className="text-indigo-600 dark:text-indigo-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={inputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/... OR linkedin.com/in/username"
+                required
+                className={`w-full border rounded-xl px-3.5 py-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                Batch / Operation Title (Optional)
               </label>
               <input
                 type="text"
                 value={operationName}
                 onChange={(e) => setOperationName(e.target.value)}
-                placeholder="e.g., MERN Batch 12 LinkedIn Audit"
-                className={`w-full px-4 py-3 rounded-xl border text-sm transition-all outline-none ${
+                placeholder="e.g. MERN Batch 12 LinkedIn Audit"
+                className={`w-full border rounded-xl px-3.5 py-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
-                    ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                    : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                    ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
                 }`}
               />
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Syncs evaluated candidate scorecard directly with Master Google Sheet.
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+          {/* Engine Feature Summary Pill */}
+          <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+            isDark ? 'bg-slate-950/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'
+          }`}>
+            <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-500" />
-              <span>0% AI Tokens - Deterministic 16-Checkpoint Scoring Engine</span>
+              <span className="text-[11px] font-medium">Automated 15-Checkpoint Scoring Engine • Real-time Master Sheet Sync</span>
             </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`px-6 py-3 rounded-xl text-white font-bold text-sm flex items-center gap-2 transition shadow-md cursor-pointer ${
-                isLoading
-                  ? 'bg-indigo-600/50 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]'
-              }`}
-            >
-              <Play size={16} fill="currentColor" />
-              <span>{isLoading ? 'Auditing LinkedIn Profiles...' : 'Run LinkedIn Evaluation'}</span>
-            </button>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${
+              isDark ? 'text-indigo-300 bg-indigo-950/60 border-indigo-500/30' : 'text-indigo-700 bg-indigo-50 border-indigo-200'
+            }`}>
+              0% AI Tokens
+            </span>
           </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer disabled:opacity-50"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Auditing LinkedIn Profiles...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-current" />
+                <span>Run LinkedIn Profile Check</span>
+              </>
+            )}
+          </button>
         </form>
       </div>
 
@@ -610,8 +787,14 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                           </td>
 
                           <td className="p-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-2 text-[11px]">
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ {item.passedCount || 0} Passed</span>
+                            <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ {item.passedCount || 0} Full</span>
+                              {(item.partialCount || 0) > 0 && (
+                                <>
+                                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                                  <span className="text-amber-600 dark:text-amber-400 font-bold">◐ {item.partialCount} Partial</span>
+                                </>
+                              )}
                               <span className="text-slate-300 dark:text-slate-700">•</span>
                               <span className="text-rose-600 dark:text-rose-400 font-bold">✗ {item.missingCount || 0} Missing</span>
                             </div>
@@ -766,7 +949,7 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                 </div>
               </div>
 
-              {/* Modal Body - Score Summary & 16 Criteria */}
+              {/* Modal Body - Score Summary & 10 Guidelines Criteria */}
               <div className="p-6 overflow-y-auto space-y-6">
                 {/* Score Banner */}
                 <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
@@ -798,13 +981,16 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                 {/* Criteria Checkpoints List */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Detailed Criteria Breakdown (15 Core Checkpoints + Bonus)
+                    Detailed Criteria Breakdown (10 Profile Guidelines / 14 Core Checkpoints + Bonus)
                   </h4>
 
                   <div className="space-y-2.5">
                     {(item.breakdown || []).map((crit, idx) => {
-                      const isFull = Boolean(crit.passed || crit.score === crit.maxScore);
+                      const maxScore = Number(crit.maxScore) || 0;
+                      const score = Number(crit.score) || 0;
                       const isBonus = Boolean(crit.isBonus);
+                      const isFull = score >= maxScore && maxScore > 0;
+                      const isPartial = !isBonus && score > 0 && score < maxScore;
 
                       return (
                         <div
@@ -814,6 +1000,8 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                               ? isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'
                               : isFull
                               ? isDark ? 'bg-slate-950/40 border-slate-800/80' : 'bg-white border-slate-200'
+                              : isPartial
+                              ? isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50/70 border-amber-300'
                               : isDark ? 'bg-rose-500/5 border-rose-500/20' : 'bg-rose-50/50 border-rose-200'
                           }`}
                         >
@@ -824,6 +1012,8 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                                   ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                                   : isFull
                                   ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                  : isPartial
+                                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                                   : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                               }`}>
                                 {isBonus ? '★' : idx + 1}
@@ -846,9 +1036,17 @@ ${(item.breakdown || []).map((b, idx) => `${idx + 1}. ${b.criterion}: ${b.score}
                                     : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                   : isFull
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                  : isPartial
+                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                               }`}>
-                                {isBonus ? (isFull ? `+${crit.score} BONUS` : 'OPTIONAL') : (isFull ? `+${crit.maxScore} / ${crit.maxScore}` : `0 / ${crit.maxScore}`)}
+                                {isBonus
+                                  ? (isFull ? `+${score} BONUS` : 'OPTIONAL')
+                                  : isFull
+                                  ? `+${maxScore} / ${maxScore} FULL`
+                                  : isPartial
+                                  ? `+${score} / ${maxScore} (PARTIAL)`
+                                  : `0 / ${maxScore} (MISSING)`}
                               </span>
                             </div>
                           </div>

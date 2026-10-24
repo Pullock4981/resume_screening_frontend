@@ -21,7 +21,10 @@ import {
   GitBranch,
   UserCheck,
   FolderGit2,
-  Eye
+  Eye,
+  Database,
+  Sliders,
+  Briefcase
 } from 'lucide-react';
 import { GithubCheckItem } from '../types';
 import { safeSaveToLocalStorage } from '../utils/safeStorage';
@@ -44,7 +47,7 @@ const DEFAULT_MASTER_SHEET = 'https://docs.google.com/spreadsheets/d/1O84kcu_A4V
 
 export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }: GithubCheckViewProps) {
   const isDark = theme === 'dark';
-  const { token } = useAuth();
+  const { user, token } = useAuth();
 
   const [inputUrl, setInputUrl] = useState('');
   const masterSheetUrl = DEFAULT_MASTER_SHEET;
@@ -79,6 +82,7 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
       strongCount: resList.filter(r => (r.totalScore || 0) >= 40 && (r.totalScore || 0) < 50).length,
       moderateCount: resList.filter(r => (r.totalScore || 0) >= 30 && (r.totalScore || 0) < 40).length,
       needsImprovementCount: resList.filter(r => (r.totalScore || 0) < 30).length,
+      userEmail: user?.email || 'user@system.com',
       results: resList
     };
 
@@ -198,132 +202,145 @@ export default function GithubCheckView({ theme = 'dark', onSaveHistoryRecord }:
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header Banner */}
-      <div className={`p-6 sm:p-8 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+      <div className={`p-6 sm:p-7 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
         isDark
-          ? 'bg-slate-900/80 border-slate-800 text-white shadow-xl backdrop-blur-md'
-          : 'bg-white border-slate-200 text-slate-900 shadow-md'
+          ? 'bg-slate-900 border-slate-800 text-white shadow-xl'
+          : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       }`}>
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <GithubIcon size={240} className={isDark ? 'text-indigo-500/20' : 'text-indigo-600/15'} />
-        </div>
-
-        <div className="relative z-10 max-w-3xl">
-          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-4 border ${
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
             isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
           }`}>
-            <UserCheck size={14} /> 60-Point Standard GitHub Profile & Repo Rubric
+            <UserCheck size={13} /> 60-Point Quantitative Rubric
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight">
             GitHub Profile <span className="text-indigo-600 dark:text-indigo-400">Auditor</span>
           </h1>
-          <p className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Evaluate candidate GitHub profiles against 15 quantitative rubric criteria (Profile picture, Bio, Pinned Repos, Tech Stack, README quality, Live Links, and Stats).
+          <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            Automated 60-point evaluation of repository quality, commit consistency, README structure, and technical depth.
           </p>
         </div>
       </div>
 
       {/* Input Form Card */}
-      <div className={`p-6 rounded-2xl border ${
-        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+      <div className={`p-5 sm:p-6 rounded-2xl border ${
+        isDark ? 'bg-slate-900 border-slate-800 text-slate-100 shadow-xl' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       }`}>
-        <form onSubmit={handleEvaluate} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card Header */}
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400">
+              <Sliders className="w-4 h-4" />
+            </div>
             <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                Candidate Sheet URL or GitHub Profile URL / Username <span className="text-indigo-600 dark:text-indigo-400">*</span>
-              </label>
-              <div className="relative">
-                <GithubIcon size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                <input
-
-                  type="text"
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/... OR https://github.com/username"
-                  required
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm transition-all outline-none ${
-                    isDark
-                      ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                  }`}
-                />
-              </div>
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                Paste a Google Sheet link or a single candidate GitHub profile link/username.
+              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Audit Parameters
+              </h3>
+              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Provide candidate Google Sheet or a direct GitHub profile link
               </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleEvaluate} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div>
+              <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <GithubIcon size={14} className="text-indigo-500" />
+                Candidate Sheet URL or Profile Link <span className="text-indigo-600 dark:text-indigo-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={inputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/... OR github.com/username"
+                required
+                className={`w-full border rounded-xl px-3.5 py-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
+                }`}
+              />
             </div>
 
             <div>
-              <label className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                Operation / Batch Name (Optional)
+              <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                Batch / Operation Name (Optional)
               </label>
               <input
                 type="text"
                 value={operationName}
                 onChange={(e) => setOperationName(e.target.value)}
                 placeholder="e.g. MERN Batch 2026 GitHub Check"
-                className={`w-full px-4 py-3 rounded-xl border text-sm transition-all outline-none ${
+                className={`w-full border rounded-xl px-3.5 py-2 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   isDark
-                    ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
-                    : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                    ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
                 }`}
               />
-              <p className={`text-xs mt-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                Identifies this batch run in history and Google Sheets.
-              </p>
             </div>
           </div>
 
-          {/* Master Central Sheet Url (System Locked) */}
-          <div className={`p-4 rounded-xl border ${
-            isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+          {/* Master Central Sheet (System Synchronized) */}
+          <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+            isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
           }`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                  <Lock size={12} /> Master Central Google Sheet (Admin Synchronized)
-                </span>
-                <p className={`text-xs mt-1 font-mono truncate max-w-xl ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Database className="w-4 h-4" />
+              </div>
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Master Central Database Sheet
+                  </span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1 font-semibold ${
+                    isDark ? 'text-indigo-300 bg-indigo-950/60 border-indigo-500/30' : 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                  }`}>
+                    <Lock className="w-2.5 h-2.5" /> Fixed
+                  </span>
+                </div>
+                <p className={`text-[11px] font-mono truncate max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   {masterSheetUrl}
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={handleCopyMasterUrl}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  copiedMasterUrl
-                    ? 'bg-emerald-600 text-white'
-                    : isDark
-                      ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                      : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
-                }`}
-              >
-                {copiedMasterUrl ? <Check size={14} /> : <Copy size={14} />}
-                {copiedMasterUrl ? 'Copied' : 'Copy URL'}
-              </button>
             </div>
+
+            <button
+              type="button"
+              onClick={handleCopyMasterUrl}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0 ${
+                copiedMasterUrl
+                  ? 'bg-emerald-600 text-white'
+                  : isDark
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+              }`}
+            >
+              {copiedMasterUrl ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedMasterUrl ? 'Copied' : 'Copy'}</span>
+            </button>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-md transition-all duration-200 flex items-center justify-center gap-2.5 ${
-              isLoading
-                ? 'bg-indigo-800 opacity-70 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-indigo-600/30'
-            }`}
+            className="w-full py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer disabled:opacity-50"
           >
             {isLoading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Scanning Candidate GitHub Profiles...
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Scanning Candidate GitHub Profiles...</span>
               </>
             ) : (
               <>
-                <Play size={18} fill="currentColor" /> Run GitHub Profile Check
+                <Play className="w-4 h-4 fill-current" />
+                <span>Run GitHub Profile Check</span>
               </>
             )}
           </button>

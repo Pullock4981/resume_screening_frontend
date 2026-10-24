@@ -11,7 +11,7 @@ import CandidateDetailModal from '../components/CandidateDetailModal';
 import SkillRulesView from '../components/SkillRulesView';
 import SetupGuideView from '../components/SetupGuideView';
 import HistoryView, { HistoryRecord } from '../components/HistoryView';
-import ProjectDashboardView from '../components/ProjectDashboardView';
+import PersonalDashboardView from '../components/PersonalDashboardView';
 import AtsResumeCheckView from '../components/AtsResumeCheckView';
 import GithubCheckView from '../components/GithubCheckView';
 import LinkedinCheckView from '../components/LinkedinCheckView';
@@ -25,9 +25,37 @@ import { ROUTE_CONFIG, getTabFromPathname } from '../utils/routes';
 import { safeSaveToLocalStorage } from '../utils/safeStorage';
 
 function MainAppContent() {
-  const { isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, token, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavigationTab>('screening');
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
+
+  // Load saved theme preference on initial mount
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('app_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        setTheme(savedTheme);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Sync theme with HTML document element so all dark: and .dark classes trigger everywhere
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme]);
+
+  const handleSetTheme = useCallback((newTheme: 'dark' | 'light') => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem('app_theme', newTheme);
+    } catch (e) {}
+  }, []);
 
   const navigateToTab = useCallback((tab: NavigationTab, replace = false) => {
     setActiveTab(tab);
@@ -64,16 +92,12 @@ function MainAppContent() {
     };
   }, [isAdmin]);
 
-  // Route access restrictions for Admin and User
+  // Route access restrictions: only restrict non-admins from admin-specific panels
   useEffect(() => {
     if (isAuthenticated) {
       if (!isAdmin) {
         if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory'].includes(activeTab)) {
           navigateToTab('screening', true);
-        }
-      } else {
-        if (['screening', 'atsCheck', 'githubCheck', 'linkedinCheck', 'dictionary', 'guide'].includes(activeTab)) {
-          navigateToTab('adminDashboard', true);
         }
       }
     }
@@ -283,7 +307,8 @@ function MainAppContent() {
           goodToGoCount: resultsList.filter((c: CandidateResult) => c.finalScore >= 80).length,
           waitingListCount: resultsList.filter((c: CandidateResult) => c.finalScore >= 70 && c.finalScore < 80).length,
           notMatchingCount: resultsList.filter((c: CandidateResult) => c.finalScore < 70).length,
-          candidates: resultsList
+          candidates: resultsList,
+          userEmail: user?.email || 'user@system.com'
         };
 
         const updatedHistory = [newRecord, ...historyRecords];
@@ -299,6 +324,8 @@ function MainAppContent() {
             },
             body: JSON.stringify({
               action: 'SCREENING_BATCH',
+              email: user?.email,
+              role: user?.role || 'user',
               details: `Screening Batch: Executed screening for ${resultsList.length} candidate(s) (Operation: '${formData.operationName || 'Batch'}')`
             })
           }).catch(err => console.error('Activity log error:', err));
@@ -364,8 +391,9 @@ function MainAppContent() {
   }, []);
 
   const handleSaveAtsRecord = (newRecord: AtsHistoryRecord) => {
+    const recordWithEmail = { ...newRecord, userEmail: user?.email || (newRecord as any).userEmail || 'user@system.com' };
     setAtsHistoryRecords(prev => {
-      const updated = [newRecord, ...prev];
+      const updated = [recordWithEmail, ...prev];
       safeSaveToLocalStorage('ats_check_history', updated);
       return updated;
     });
@@ -382,8 +410,9 @@ function MainAppContent() {
   }, []);
 
   const handleSaveGithubRecord = (newRecord: any) => {
+    const recordWithEmail = { ...newRecord, userEmail: user?.email || newRecord.userEmail || 'user@system.com' };
     setGithubHistoryRecords(prev => {
-      const updated = [newRecord, ...prev];
+      const updated = [recordWithEmail, ...prev];
       safeSaveToLocalStorage('github_check_history', updated);
       return updated;
     });
@@ -391,8 +420,9 @@ function MainAppContent() {
   };
 
   const handleSaveLinkedinRecord = (newRecord: any) => {
+    const recordWithEmail = { ...newRecord, userEmail: user?.email || newRecord.userEmail || 'user@system.com' };
     setLinkedinHistoryRecords(prev => {
-      const updated = [newRecord, ...prev];
+      const updated = [recordWithEmail, ...prev];
       safeSaveToLocalStorage('linkedin_check_history', updated);
       return updated;
     });
@@ -403,7 +433,7 @@ function MainAppContent() {
 
   if (authLoading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center font-sans ${isDark ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`min-h-screen flex items-center justify-center font-sans ${isDark ? 'dark bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-semibold">Verifying Session...</span>
@@ -418,14 +448,14 @@ function MainAppContent() {
 
   return (
     <div className={`min-h-screen flex font-sans transition-colors duration-200 ${
-      isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+      isDark ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
     }`}>
       {/* Sidebar Component */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={navigateToTab}
         theme={theme}
-        setTheme={setTheme}
+        setTheme={handleSetTheme}
         candidateCount={candidates.length}
         historyCount={historyRecords.filter(r => !/ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && !/linkedin/i.test(r.operationName || '') && (r as any).type !== 'github' && (r as any).type !== 'linkedin').length}
         atsHistoryCount={historyRecords.filter(r => /ats/i.test(r.operationName || '') && !/github/i.test(r.operationName || '') && !/linkedin/i.test(r.operationName || '')).length + (atsHistoryRecords ? atsHistoryRecords.length : 0)}
@@ -436,7 +466,7 @@ function MainAppContent() {
 
       {/* Main Right Content Panel */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar theme={theme} setTheme={setTheme} activeTab={activeTab} />
+        <Navbar theme={theme} setTheme={handleSetTheme} activeTab={activeTab} onNavigateTab={navigateToTab} />
 
         <main className={`flex-1 w-full max-w-[1920px] mx-auto ${
           activeTab === 'nexView' || activeTab === 'aiAssignmentCheck' ? 'p-0 h-[calc(100vh-65px)] overflow-hidden' : (activeTab === 'screening' ? (candidates.length > 0 ? 'p-4 sm:p-6 md:p-8 space-y-6' : 'p-3 sm:p-4 space-y-3 max-h-[calc(100vh-65px)] overflow-hidden') : 'p-4 sm:p-6 md:p-8 space-y-6')
@@ -453,9 +483,11 @@ function MainAppContent() {
           {activeTab === 'screening' && (
             <div className="space-y-6">
               <div className="space-y-1">
-                <h2 className="text-2xl font-extrabold tracking-tight">New Candidate Screening Batch</h2>
-                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Paste Job Description & Google Sheet link. Engine evaluates resumes with 0% AI Tokens and syncs directly with Google Sheet.
+                <h2 className={`text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Candidate Resume Screening
+                </h2>
+                <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Automated JD-to-resume matching with direct Google Sheet evaluation syncing.
                 </p>
               </div>
 
@@ -516,19 +548,19 @@ function MainAppContent() {
           {/* TAB: AI Assignment Check Portal */}
           {activeTab === 'aiAssignmentCheck' && <AiAssignmentCheckView theme={theme} />}
 
-          {/* TAB 2: Dashboard & Results (Generalized Project-Wise) */}
+          {/* TAB: Personal Dashboard (User Activity, Tool Usage & Stats) */}
           {activeTab === 'dashboard' && (
-            <ProjectDashboardView
+            <PersonalDashboardView
               theme={theme}
               historyRecords={historyRecords}
-              activeCandidates={candidates}
-              selectedProjectId={selectedProjectId}
-              onSelectProject={setSelectedProjectId}
-              onNewScreening={() => navigateToTab('screening')}
-              onSelectCandidate={setSelectedCandidate}
-              isLoading={isLoading}
-              isFinished={isFinished}
-              progress={progress}
+              atsHistoryRecords={atsHistoryRecords}
+              githubHistoryRecords={githubHistoryRecords}
+              linkedinHistoryRecords={linkedinHistoryRecords}
+              nexViewHistoryRecords={nexViewHistoryRecords}
+              onNavigateTab={navigateToTab}
+              onSelectRecord={handleSelectHistoryRecord}
+              onSyncHistory={syncHistoryWithGoogleSheets}
+              isSyncing={isSyncing}
             />
           )}
 
@@ -573,10 +605,11 @@ function MainAppContent() {
         </main>
 
         {activeTab !== 'nexView' && activeTab !== 'aiAssignmentCheck' && (
-          <footer className={`border-t py-4 text-center text-xs transition-colors duration-200 ${
+          <footer className={`border-t py-4 text-center text-xs transition-colors duration-200 flex items-center justify-center gap-2 ${
             isDark ? 'border-slate-900 text-slate-500' : 'border-slate-200 text-slate-400'
           }`}>
-            Placement Kit - 0% AI Token Deterministic Engine with Central Google Sheet Sync
+            <img src="/assats/placement-logo.png" alt="Placement Kit Logo" className="w-4 h-4 object-contain opacity-80" />
+            <span>Placement Kit - 0% AI Token Deterministic Engine with Central Google Sheet Sync</span>
           </footer>
         )}
       </div>

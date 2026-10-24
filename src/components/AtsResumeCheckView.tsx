@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AtsResult } from '../types';
 import { ShieldAlert, FileText, Zap, Award, Search, AlertTriangle, Table, CheckCircle2, XCircle, ExternalLink, RefreshCw, Lock, Copy, Check } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface CandidateBatchItem extends AtsResult {
   name: string;
@@ -23,6 +24,7 @@ const SERVICE_ACCOUNT_EMAIL = 'resume-service@resume-scanner-508710.iam.gservice
 
 export const AtsResumeCheckView: React.FC<Props> = ({ theme = 'dark', onSaveHistoryRecord }) => {
   const isDark = theme === 'dark';
+  const { user, token } = useAuth();
   const [sheetUrl, setSheetUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
@@ -58,12 +60,17 @@ export const AtsResumeCheckView: React.FC<Props> = ({ theme = 'dark', onSaveHist
 
       const payload: any = {
         sheetUrl: sheetUrl.trim(),
-        operationName: 'ATS_Batch_Sheet_Evaluation'
+        operationName: 'ATS_Batch_Sheet_Evaluation',
+        email: user?.email,
+        userEmail: user?.email
       };
 
       const res = await fetch(`${backendUrl}/api/ats-check`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload)
       });
 
@@ -105,12 +112,29 @@ export const AtsResumeCheckView: React.FC<Props> = ({ theme = 'dark', onSaveHist
                     operationName: 'ATS Batch Sheet Check (' + outcome.results.length + ' Candidates)',
                     studentSheetUrl: sheetUrl.trim(),
                     totalCandidates: outcome.results.length,
+                    userEmail: user?.email || 'user@system.com',
                     excellentCount: outcome.results.filter((r: any) => (r.atsScore || r.ats_score || 0) >= 80).length,
                     strongCount: outcome.results.filter((r: any) => (r.atsScore || r.ats_score || 0) >= 70 && (r.atsScore || r.ats_score || 0) < 80).length,
                     moderateCount: outcome.results.filter((r: any) => (r.atsScore || r.ats_score || 0) >= 60 && (r.atsScore || r.ats_score || 0) < 70).length,
                     needsWorkCount: outcome.results.filter((r: any) => (r.atsScore || r.ats_score || 0) < 60).length,
                     results: outcome.results
                   });
+                }
+                // Log activity to backend
+                if (token) {
+                  fetch(`${backendUrl}/api/activity/log`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      action: 'ATS_CHECK',
+                      email: user?.email,
+                      role: user?.role || 'user',
+                      details: `ATS Resume Check: Evaluated ${outcome.results.length} resume(s)`
+                    })
+                  }).catch(e => {});
                 }
               }
             } else if (data.status === 'error') {

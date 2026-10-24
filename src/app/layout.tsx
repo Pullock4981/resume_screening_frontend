@@ -18,6 +18,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Placement Kit — Intelligent Resume Screening Engine",
   description: "Deterministic 0% AI Token Resume Screening & ATS Rubric Evaluation System",
+  icons: {
+    icon: "/assats/placement-logo.png",
+    shortcut: "/assats/placement-logo.png",
+    apple: "/assats/placement-logo.png"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

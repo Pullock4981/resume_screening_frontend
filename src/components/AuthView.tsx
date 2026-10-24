@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, User, ShieldCheck, LogIn, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, User, ShieldCheck, LogIn, UserPlus, AlertCircle, CheckCircle2, Users, ChevronDown } from 'lucide-react';
+import { TEAM_OPTIONS } from '../types';
 
 interface AuthViewProps {
   theme?: 'dark' | 'light';
@@ -16,6 +17,7 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [team, setTeam] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -30,7 +32,12 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
         await login(email, password);
         setSuccessMsg('Login successful! Welcome back.');
       } else {
-        const res = await register(name, email, password);
+        if (!team) {
+          setAuthError('Please select your Team Name (Mexem, Alpha, Delta, Supernuva, or PRM).');
+          setIsLoading(false);
+          return;
+        }
+        const res = await register(name, email, password, team);
         if (res?.pendingApproval) {
           setSuccessMsg('Registration request submitted! Your account is pending admin approval. You can log in once approved.');
           setMode('login');
@@ -49,11 +56,12 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
     setMode(newMode);
     setAuthError(null);
     setSuccessMsg(null);
+    setTeam('');
   };
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 transition-colors duration-200 ${
-      isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+      isDark ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
     }`}>
       {/* Background ambient accents */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -67,11 +75,15 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
       }`}>
         {/* Header Icon & Title */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-600 mx-auto flex items-center justify-center shadow-lg shadow-indigo-600/30">
-            <ShieldCheck className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 dark:bg-indigo-500/15 border border-indigo-500/20 mx-auto flex items-center justify-center p-2.5 shadow-lg shadow-indigo-600/20">
+            <img
+              src="/assats/placement-logo.png"
+              alt="Placement Kit"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className={`text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            Placement Kit <span className="text-indigo-600 dark:text-indigo-400">AI Engine</span>
+            Placement Kit <span className="text-indigo-600 dark:text-indigo-400">Engine</span>
           </h1>
           <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {mode === 'login' ? 'Enter credentials for secure system access' : 'Create an account to start screening resumes'}
@@ -124,21 +136,56 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'register' && (
-            <div>
-              <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Full Name <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={`w-full border rounded-xl px-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
-                }`}
-              />
-            </div>
+            <>
+              <div>
+                <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={`w-full border rounded-xl px-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-semibold mb-1.5 flex items-center justify-between ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Select Team Name <span className="text-rose-500">*</span>
+                  </span>
+                  <span className={`text-[10px] font-mono ${isDark ? 'text-indigo-400/80' : 'text-indigo-600/80'}`}>Required</span>
+                </label>
+                <div className="relative">
+                  <select
+                    required
+                    value={team}
+                    onChange={(e) => setTeam(e.target.value)}
+                    className={`w-full border rounded-xl px-4 py-2.5 text-xs transition appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
+                      isDark
+                        ? 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
+                    } ${!team ? (isDark ? 'text-slate-500' : 'text-slate-400') : ''}`}
+                  >
+                    <option value="" disabled className={isDark ? 'bg-slate-900 text-slate-400' : 'bg-white text-slate-400'}>
+                      -- Select Team Name --
+                    </option>
+                    {TEAM_OPTIONS.map((t) => (
+                      <option key={t} value={t} className={isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           <div>

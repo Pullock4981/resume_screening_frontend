@@ -96,13 +96,17 @@ export interface NexViewRecord {
   [key: string]: any;
 }
 
+export const TEAM_OPTIONS = ['Mexem', 'Alpha', 'Delta', 'Supernuva', 'PRM'] as const;
+export type TeamName = typeof TEAM_OPTIONS[number];
+
 export interface AuthUser {
   id: string;
-  username: string;
+  username?: string;
   name?: string;
   email?: string;
   status?: string;
   role: 'admin' | 'user';
+  team?: TeamName | string;
   token?: string;
   [key: string]: any;
 }
