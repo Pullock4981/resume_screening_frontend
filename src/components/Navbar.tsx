@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ShieldCheck, DatabaseZap, Sun, Moon, LogOut, User } from 'lucide-react';
+import { ShieldCheck, DatabaseZap, Sun, Moon, LogOut, User, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NavigationTab } from './Sidebar';
 import { ROUTE_CONFIG } from '../utils/routes';
@@ -60,18 +60,27 @@ export default function Navbar({ theme, setTheme, activeTab = 'screening', onNav
       </div>
 
       <div className="flex items-center gap-3 text-xs">
-        <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
-          isDark ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-slate-100 border-slate-200 text-slate-800'
-        }`}>
-          <DatabaseZap className="w-4 h-4 text-indigo-500" />
+        <a
+          href="https://docs.google.com/spreadsheets/d/1O84kcu_A4V4Chsb6TPQEwGNxhuqu1Qml431I7yEQu3I/edit?gid=0#gid=0"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Click to open Central Master Google Sheet"
+          className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border transition cursor-pointer group ${
+            isDark
+              ? 'bg-slate-900 border-slate-800 text-slate-200 hover:border-emerald-500/50 hover:bg-slate-800'
+              : 'bg-slate-100 border-slate-200 text-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50'
+          }`}
+        >
+          <DatabaseZap className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition" />
           <span>Central Storage: <strong>Google Sheet Sync</strong></span>
-        </div>
+          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-emerald-400 transition" />
+        </a>
 
         {user && (
           <div
-            onClick={() => onNavigateTab && onNavigateTab('dashboard')}
+            onClick={() => onNavigateTab && onNavigateTab('profile')}
             className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition cursor-pointer select-none ${
-              activeTab === 'dashboard'
+              activeTab === 'profile'
                 ? isDark
                   ? 'bg-indigo-600/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
                   : 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-1 ring-indigo-200'
@@ -79,7 +88,7 @@ export default function Navbar({ theme, setTheme, activeTab = 'screening', onNav
                 ? 'bg-slate-900 border-slate-800 text-white hover:border-indigo-500/50 hover:bg-slate-800/80'
                 : 'bg-slate-100 border-slate-200 text-slate-900 hover:border-indigo-400 hover:bg-slate-200/60'
             }`}
-            title="Click to view your Personal Dashboard & Activity Stats"
+            title="Click to view your Profile & Account Security"
           >
             <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px] shadow-sm">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}

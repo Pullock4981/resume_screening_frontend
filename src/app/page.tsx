@@ -18,6 +18,7 @@ import LinkedinCheckView from '../components/LinkedinCheckView';
 import NexView from '../components/NexView';
 import AiAssignmentCheckView from '../components/AiAssignmentCheckView';
 import AdminUserManagementView from '../components/AdminUserManagementView';
+import ProfileView from '../components/ProfileView';
 import AuthView from '../components/AuthView';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CandidateResult, AtsHistoryRecord, NexViewRecord, LinkedinHistoryRecord } from '../types';
@@ -92,12 +93,26 @@ function MainAppContent() {
     };
   }, [isAdmin]);
 
-  // Route access restrictions: only restrict non-admins from admin-specific panels
+  // Route access restrictions: non-admins cannot access admin panels; admins can only view stats and history (not operational tools)
   useEffect(() => {
     if (isAuthenticated) {
       if (!isAdmin) {
-        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory'].includes(activeTab)) {
+        if (['adminDashboard', 'userManagement', 'adminLogs', 'admin', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory', 'dictionary', 'guide'].includes(activeTab)) {
           navigateToTab('screening', true);
+        }
+      } else {
+        if (activeTab === 'screening') {
+          navigateToTab('adminScreeningHistory', true);
+        } else if (activeTab === 'atsCheck') {
+          navigateToTab('adminAtsHistory', true);
+        } else if (activeTab === 'githubCheck') {
+          navigateToTab('adminGithubHistory', true);
+        } else if (activeTab === 'linkedinCheck') {
+          navigateToTab('adminLinkedinHistory', true);
+        } else if (activeTab === 'nexView') {
+          navigateToTab('adminNexViewHistory', true);
+        } else if (activeTab === 'dictionary' || activeTab === 'guide' || activeTab === 'aiAssignmentCheck') {
+          navigateToTab('adminDashboard', true);
         }
       }
     }
@@ -480,7 +495,7 @@ function MainAppContent() {
           )}
 
           {/* TAB 1: New Screening Input */}
-          {activeTab === 'screening' && (
+          {activeTab === 'screening' && !isAdmin && (
             <div className="space-y-6">
               <div className="space-y-1">
                 <h2 className={`text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -534,19 +549,19 @@ function MainAppContent() {
           )}
 
           {/* TAB: ATS Resume Check (100-Point Rubric) */}
-          {activeTab === 'atsCheck' && <AtsResumeCheckView theme={theme} onSaveHistoryRecord={handleSaveAtsRecord} />}
+          {activeTab === 'atsCheck' && !isAdmin && <AtsResumeCheckView theme={theme} onSaveHistoryRecord={handleSaveAtsRecord} />}
 
           {/* TAB: GitHub Profile Check (60-Point Rubric) */}
-          {activeTab === 'githubCheck' && <GithubCheckView theme={theme} onSaveHistoryRecord={handleSaveGithubRecord} />}
+          {activeTab === 'githubCheck' && !isAdmin && <GithubCheckView theme={theme} onSaveHistoryRecord={handleSaveGithubRecord} />}
 
           {/* TAB: LinkedIn Profile Check (60-Point Rubric) */}
-          {activeTab === 'linkedinCheck' && <LinkedinCheckView theme={theme} onSaveHistoryRecord={handleSaveLinkedinRecord} />}
+          {activeTab === 'linkedinCheck' && !isAdmin && <LinkedinCheckView theme={theme} onSaveHistoryRecord={handleSaveLinkedinRecord} />}
 
           {/* TAB: NexView Tool Portal */}
-          {activeTab === 'nexView' && <NexView theme={theme} />}
+          {activeTab === 'nexView' && !isAdmin && <NexView theme={theme} />}
 
           {/* TAB: AI Assignment Check Portal */}
-          {activeTab === 'aiAssignmentCheck' && <AiAssignmentCheckView theme={theme} />}
+          {activeTab === 'aiAssignmentCheck' && !isAdmin && <AiAssignmentCheckView theme={theme} />}
 
           {/* TAB: Personal Dashboard (User Activity, Tool Usage & Stats) */}
           {activeTab === 'dashboard' && (
@@ -561,6 +576,7 @@ function MainAppContent() {
               onSelectRecord={handleSelectHistoryRecord}
               onSyncHistory={syncHistoryWithGoogleSheets}
               isSyncing={isSyncing}
+              showToolUsageChart={isAdmin}
             />
           )}
 
@@ -592,16 +608,35 @@ function MainAppContent() {
             />
           )}
 
-          {/* TAB: Admin User Management Panel & Dashboard */}
-          {(activeTab === 'admin' || activeTab === 'adminDashboard') && <AdminUserManagementView theme={theme} initialSubTab="overview" onNavigateTab={navigateToTab} />}
+          {/* TAB: Admin Dashboard (Admin Personal Dashboard + Tool Usage Frequency Chart) */}
+          {(activeTab === 'admin' || activeTab === 'adminDashboard') && (
+            <PersonalDashboardView
+              theme={theme}
+              historyRecords={historyRecords}
+              atsHistoryRecords={atsHistoryRecords}
+              githubHistoryRecords={githubHistoryRecords}
+              linkedinHistoryRecords={linkedinHistoryRecords}
+              nexViewHistoryRecords={nexViewHistoryRecords}
+              onNavigateTab={navigateToTab}
+              onSelectRecord={handleSelectHistoryRecord}
+              onSyncHistory={syncHistoryWithGoogleSheets}
+              isSyncing={isSyncing}
+              showToolUsageChart={true}
+            />
+          )}
+
+          {/* TAB: Admin User Management Panel & Audit Logs */}
           {activeTab === 'userManagement' && <AdminUserManagementView theme={theme} initialSubTab="users" onNavigateTab={navigateToTab} />}
           {activeTab === 'adminLogs' && <AdminUserManagementView theme={theme} initialSubTab="logs" onNavigateTab={navigateToTab} />}
 
+          {/* TAB: Profile & Security (Personal Info & Change Password) */}
+          {activeTab === 'profile' && <ProfileView theme={theme} onNavigateTab={navigateToTab} />}
+
           {/* TAB 4: Skill Rules & ATS Dataset */}
-          {activeTab === 'dictionary' && <SkillRulesView theme={theme} />}
+          {activeTab === 'dictionary' && !isAdmin && <SkillRulesView theme={theme} />}
 
           {/* TAB 5: Google Sheet Setup Guide */}
-          {activeTab === 'guide' && <SetupGuideView theme={theme} />}
+          {activeTab === 'guide' && !isAdmin && <SetupGuideView theme={theme} />}
         </main>
 
         {activeTab !== 'nexView' && activeTab !== 'aiAssignmentCheck' && (

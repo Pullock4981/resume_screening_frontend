@@ -1,11 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   PlayCircle,
-  BookOpen,
-  HelpCircle,
   Sun,
   Moon,
   Database,
@@ -17,7 +15,9 @@ import {
   Users,
   Clock,
   Tv,
-  Sparkles
+  Sparkles,
+  Wrench,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -52,7 +52,8 @@ export type NavigationTab =
   | 'adminAtsHistory'
   | 'adminGithubHistory'
   | 'adminLinkedinHistory'
-  | 'adminNexViewHistory';
+  | 'adminNexViewHistory'
+  | 'profile';
 
 interface SidebarProps {
   activeTab: NavigationTab;
@@ -102,16 +103,16 @@ export default function Sidebar({
       label: 'User Activity Audit Logs',
       icon: Clock,
       badge: null
+    },
+    {
+      id: 'profile' as const,
+      label: 'Profile & Security',
+      icon: User,
+      badge: 'Account'
     }
   ];
 
-  const userMenuItems = [
-    {
-      id: 'dashboard' as const,
-      label: 'Personal Dashboard',
-      icon: LayoutDashboard,
-      badge: 'My Stats'
-    },
+  const userToolMenuItems = [
     {
       id: 'screening' as const,
       label: 'Resume Screening',
@@ -152,21 +153,74 @@ export default function Sidebar({
       id: 'history' as const,
       label: 'Screening History',
       icon: History,
-      badge: (isAdmin ? totalHistoryCount : historyCount) > 0 ? (isAdmin ? totalHistoryCount : historyCount) : null
-    },
-    {
-      id: 'dictionary' as const,
-      label: 'Skill Rules & ATS',
-      icon: BookOpen,
-      badge: null
-    },
-    {
-      id: 'guide' as const,
-      label: 'Google Sheet Setup',
-      icon: HelpCircle,
-      badge: null
+      badge: historyCount > 0 ? historyCount : null
     }
   ];
+
+  const adminToolMenuItems = [
+    {
+      id: 'adminScreeningHistory' as const,
+      label: 'Resume Screening',
+      icon: PlayCircle,
+      badge: historyCount > 0 ? historyCount : null
+    },
+    {
+      id: 'adminAtsHistory' as const,
+      label: 'ATS Resume Check',
+      icon: FileCheck,
+      badge: atsHistoryCount > 0 ? atsHistoryCount : null
+    },
+    {
+      id: 'adminGithubHistory' as const,
+      label: 'GitHub Profile Check',
+      icon: GithubIcon,
+      badge: githubHistoryCount > 0 ? githubHistoryCount : null
+    },
+    {
+      id: 'adminLinkedinHistory' as const,
+      label: 'LinkedIn Profile Check',
+      icon: LinkedinIcon,
+      badge: linkedinHistoryCount > 0 ? linkedinHistoryCount : null
+    },
+    {
+      id: 'adminNexViewHistory' as const,
+      label: 'NexView Tool',
+      icon: Tv,
+      badge: nexViewHistoryCount > 0 ? nexViewHistoryCount : null
+    },
+    {
+      id: 'history' as const,
+      label: 'Screening History',
+      icon: History,
+      badge: totalHistoryCount > 0 ? totalHistoryCount : null
+    }
+  ];
+
+  const toolMenuItems = isAdmin ? adminToolMenuItems : userToolMenuItems;
+
+  const isToolActive = [
+    'screening',
+    'atsCheck',
+    'githubCheck',
+    'linkedinCheck',
+    'aiAssignmentCheck',
+    'nexView',
+    'history',
+    'adminScreeningHistory',
+    'adminAtsHistory',
+    'adminGithubHistory',
+    'adminLinkedinHistory',
+    'adminNexViewHistory'
+  ].includes(activeTab);
+
+  // Tools collapsed by default ("eta collups thakbe"), auto-open if a tool is active
+  const [isToolsOpen, setIsToolsOpen] = useState(isToolActive);
+
+  useEffect(() => {
+    if (isToolActive) {
+      setIsToolsOpen(true);
+    }
+  }, [isToolActive, activeTab]);
 
   return (
     <aside
@@ -177,13 +231,13 @@ export default function Sidebar({
       }`}
     >
       <div>
-        {/* Sidebar Brand Header (Clickable link to User Dashboard) */}
+        {/* Sidebar Brand Header (Clickable link to Dashboard) */}
         <button
           type="button"
-          onClick={() => setActiveTab('dashboard')}
-          title="Go to User Dashboard"
+          onClick={() => setActiveTab(isAdmin ? 'adminDashboard' : 'dashboard')}
+          title={isAdmin ? "Go to Admin Dashboard" : "Go to User Dashboard"}
           className={`w-full h-16 px-5 flex items-center gap-3 text-left transition-all duration-200 cursor-pointer group ${
-            activeTab === 'dashboard'
+            activeTab === (isAdmin ? 'adminDashboard' : 'dashboard')
               ? isDark
                 ? 'bg-indigo-950/30'
                 : 'bg-indigo-50/70'
@@ -256,49 +310,146 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Main Navigation Menu (Available to all users, including Admin) */}
+        {/* Main Navigation Menu */}
         <div className="p-3 space-y-1">
-          <p className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Main Menu
-          </p>
+          {/* 1. Personal Dashboard (Only for regular users; for Admin, Admin Dashboard is their personal dashboard) */}
+          {!isAdmin && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <span>Personal Dashboard</span>
+              </div>
 
-          {userMenuItems.map(item => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id || (item.id === 'history' && ['history', 'adminScreeningHistory', 'adminAtsHistory', 'adminGithubHistory', 'adminLinkedinHistory', 'adminNexViewHistory'].includes(activeTab));
+              <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                activeTab === 'dashboard'
+                  ? 'bg-white/20 text-white'
+                  : isDark
+                  ? 'bg-slate-800 text-slate-200 border border-slate-700'
+                  : 'bg-slate-100 text-slate-800 border border-slate-200'
+              }`}>
+                My Stats
+              </span>
+            </button>
+          )}
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  isActive
-                    ? isDark
-                      ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                      : 'bg-indigo-600 text-white shadow-sm font-bold'
-                    : isDark
-                    ? 'text-slate-300 hover:text-white hover:bg-slate-900'
-                    : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <span>{item.label}</span>
-                </div>
+          {/* Profile & Security (Available for both user and admin) */}
+          {!isAdmin && (
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <span>Profile & Security</span>
+              </div>
 
-                {item.badge !== null && (
-                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : isDark
-                      ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                      : 'bg-slate-100 text-slate-800 border border-slate-200'
-                  }`}>
-                    {item.badge}
-                  </span>
+              <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
+                activeTab === 'profile'
+                  ? 'bg-white/20 text-white'
+                  : isDark
+                  ? 'bg-slate-800 text-slate-200 border border-slate-700'
+                  : 'bg-slate-100 text-slate-800 border border-slate-200'
+              }`}>
+                Account
+              </span>
+            </button>
+          )}
+
+          {/* 2. Collapsible Tools Parent Route */}
+          <div className="pt-0.5 space-y-1">
+            <button
+              type="button"
+              onClick={() => setIsToolsOpen(prev => !prev)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer select-none ${
+                isToolActive && !isToolsOpen
+                  ? isDark
+                    ? 'bg-indigo-950/40 text-indigo-300 border border-indigo-500/30'
+                    : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Wrench className={`w-4 h-4 ${isToolActive ? 'text-indigo-500 dark:text-indigo-400' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <span className="font-bold">{isAdmin ? 'Tool History & Stats' : 'Tools'}</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {isToolActive && !isToolsOpen && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                 )}
-              </button>
-            );
-          })}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isToolsOpen ? 'rotate-180 text-indigo-500' : isDark ? 'text-slate-500' : 'text-slate-400'
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Collapsible Child Routes */}
+            {isToolsOpen && (
+              <div className="pl-2 space-y-1 pt-1 ml-3.5 border-l-2 border-indigo-500/20 dark:border-indigo-500/30 transition-all duration-200 animate-fadeIn">
+                {toolMenuItems.map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id ||
+                    (item.id === 'adminScreeningHistory' && activeTab === 'screening') ||
+                    (item.id === 'adminAtsHistory' && activeTab === 'atsCheck') ||
+                    (item.id === 'adminGithubHistory' && activeTab === 'githubCheck') ||
+                    (item.id === 'adminLinkedinHistory' && activeTab === 'linkedinCheck') ||
+                    (item.id === 'adminNexViewHistory' && activeTab === 'nexView');
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        isActive
+                          ? isDark
+                            ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                            : 'bg-indigo-600 text-white shadow-xs font-bold'
+                          : isDark
+                          ? 'text-slate-300 hover:text-white hover:bg-slate-900/80'
+                          : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+
+                      {item.badge !== null && (
+                        <span className={`px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-full shrink-0 ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : isDark
+                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -306,9 +457,9 @@ export default function Sidebar({
       <div className={`p-4 border-t space-y-3 ${isDark ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
         {user && (
           <div
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => setActiveTab('profile')}
             className={`p-3 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer select-none ${
-              activeTab === 'dashboard'
+              activeTab === 'profile'
                 ? isDark
                   ? 'bg-indigo-600/20 border-indigo-500/50 text-white ring-1 ring-indigo-500/30'
                   : 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-1 ring-indigo-200'
@@ -316,7 +467,7 @@ export default function Sidebar({
                 ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-2xs'
             }`}
-            title="Click to view Personal Dashboard & Activity Stats"
+            title="Click to view Profile & Security"
           >
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
@@ -325,7 +476,7 @@ export default function Sidebar({
               <div className="overflow-hidden">
                 <div className="font-bold truncate text-[11px] flex items-center gap-1.5">
                   <span>{user.name}</span>
-                  <span className="text-[9px] text-slate-400 font-normal">› Dashboard</span>
+                  <span className="text-[9px] text-slate-400 font-normal">› Profile</span>
                 </div>
                 <div className="text-[9px] uppercase font-mono text-indigo-400 font-semibold">{user.role}</div>
               </div>

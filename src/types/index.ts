@@ -96,8 +96,20 @@ export interface NexViewRecord {
   [key: string]: any;
 }
 
-export const TEAM_OPTIONS = ['Mexem', 'Alpha', 'Delta', 'Supernuva', 'PRM'] as const;
+export const TEAM_OPTIONS = ['Nexen', 'Alpha', 'Delta', 'Supernuva', 'PRM'] as const;
 export type TeamName = typeof TEAM_OPTIONS[number];
+
+/**
+ * Validates organizational email for Programming Hero / Placement Kit.
+ * Required: Must contain '.ph@gmail.com' OR 'programming-hero.com'
+ */
+export const isValidOrgEmail = (email?: string | null): boolean => {
+  if (!email || typeof email !== 'string') return false;
+  const clean = email.trim().toLowerCase();
+  const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!basicEmailRegex.test(clean)) return false;
+  return clean.includes('.ph@gmail.com') || clean.includes('programming-hero.com');
+};
 
 export interface AuthUser {
   id: string;

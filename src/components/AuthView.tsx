@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, User, ShieldCheck, LogIn, UserPlus, AlertCircle, CheckCircle2, Users, ChevronDown } from 'lucide-react';
-import { TEAM_OPTIONS } from '../types';
+import { TEAM_OPTIONS, isValidOrgEmail } from '../types';
 
 interface AuthViewProps {
   theme?: 'dark' | 'light';
@@ -28,12 +28,19 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
     setIsLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!isValidOrgEmail(cleanEmail) && cleanEmail !== 'admin@admin.com') {
+        setAuthError('Invalid email address! Email must contain ".ph@gmail.com" or "programming-hero.com" (e.g. name.ph@gmail.com or user@programming-hero.com).');
+        setIsLoading(false);
+        return;
+      }
+
       if (mode === 'login') {
         await login(email, password);
         setSuccessMsg('Login successful! Welcome back.');
       } else {
         if (!team) {
-          setAuthError('Please select your Team Name (Mexem, Alpha, Delta, Supernuva, or PRM).');
+          setAuthError('Please select your Team Name (Nexen, Alpha, Delta, Supernuva, or PRM).');
           setIsLoading(false);
           return;
         }
@@ -189,19 +196,42 @@ export default function AuthView({ theme = 'dark' }: AuthViewProps) {
           )}
 
           <div>
-            <label className={`block text-xs font-semibold mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Email Address <span className="text-rose-500">*</span>
+            <label className={`block text-xs font-semibold mb-1.5 flex items-center justify-between ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <span className="flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Email Address <span className="text-rose-500">*</span>
+              </span>
+              <span className={`text-[10px] font-mono transition-colors ${
+                !email
+                  ? (isDark ? 'text-slate-500' : 'text-slate-400')
+                  : isValidOrgEmail(email) || email.trim().toLowerCase() === 'admin@admin.com'
+                  ? 'text-emerald-500 font-bold'
+                  : 'text-rose-500 font-bold'
+              }`}>
+                {!email ? '.ph@gmail.com | programming-hero.com' : (isValidOrgEmail(email) || email.trim().toLowerCase() === 'admin@admin.com') ? '✓ Valid Domain' : '✕ Invalid Domain'}
+              </span>
             </label>
             <input
               type="email"
               required
-              placeholder="user@organization.com"
+              placeholder="e.g. yourname.ph@gmail.com or name@programming-hero.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`w-full border rounded-xl px-4 py-2.5 text-xs transition focus:outline-none focus:ring-2 ${
+                email && !isValidOrgEmail(email) && email.trim().toLowerCase() !== 'admin@admin.com'
+                  ? 'border-rose-500/80 focus:ring-rose-500/40'
+                  : email && (isValidOrgEmail(email) || email.trim().toLowerCase() === 'admin@admin.com')
+                  ? 'border-emerald-500/80 focus:ring-emerald-500/40'
+                  : 'focus:ring-indigo-500'
+              } ${
                 isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
               }`}
             />
+            {email && !isValidOrgEmail(email) && email.trim().toLowerCase() !== 'admin@admin.com' && (
+              <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>ইমেইল অবশ্যই <strong>.ph@gmail.com</strong> অথবা <strong>programming-hero.com</strong> হতে হবে।</span>
+              </p>
+            )}
           </div>
 
           <div>

@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, team?: string) => Promise<{ pendingApproval?: boolean; message?: string; success?: boolean }>;
   logout: () => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   authError: string | null;
   setAuthError: (err: string | null) => void;
 }
@@ -190,6 +191,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    setAuthError(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to change password.');
+      }
+
+      return data;
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to change password.');
+      throw err;
+    }
+  };
+
   const isAuthenticated = !!token && !!user && user.status === 'active';
   const isAdmin = isAuthenticated && user?.role === 'admin';
 
@@ -204,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        changePassword,
         authError,
         setAuthError
       }}

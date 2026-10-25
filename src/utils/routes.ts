@@ -51,6 +51,12 @@ export const ROUTE_CONFIG: Record<NavigationTab, RouteMeta> = {
     title: 'Personal Dashboard',
     badge: 'User Activity'
   },
+  profile: {
+    tab: 'profile',
+    path: '/profile',
+    title: 'My Profile & Security',
+    badge: 'Account'
+  },
   history: {
     tab: 'history',
     path: '/history',
@@ -151,6 +157,8 @@ export function getTabFromPathname(pathname: string, isAdmin: boolean): Navigati
   }
 
   // Fallbacks for alternative aliases
+  if (clean === '/profile' || clean === '/account' || clean === '/settings') return 'profile';
+  if (clean === '/tools') return 'screening';
   if (clean === '/ats') return 'atsCheck';
   if (clean === '/github') return 'githubCheck';
   if (clean === '/linkedin') return 'linkedinCheck';

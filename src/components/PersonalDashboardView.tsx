@@ -30,7 +30,15 @@ import {
   Zap,
   ChevronRight,
   ShieldCheck,
-  CheckSquare
+  CheckSquare,
+  Trophy,
+  FileText,
+  History,
+  FileSpreadsheet,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NavigationTab } from './Sidebar';
@@ -60,6 +68,7 @@ interface PersonalDashboardViewProps {
   onSelectRecord?: (record: any) => void;
   onSyncHistory?: () => void;
   isSyncing?: boolean;
+  showToolUsageChart?: boolean;
 }
 
 export default function PersonalDashboardView({
@@ -72,11 +81,25 @@ export default function PersonalDashboardView({
   onNavigateTab,
   onSelectRecord,
   onSyncHistory,
-  isSyncing = false
+  isSyncing = false,
+  showToolUsageChart = false
 }: PersonalDashboardViewProps) {
   const isDark = theme === 'dark';
-  const { user, token } = useAuth();
+  const { user, token, isAdmin } = useAuth();
+  const isAdministrator = Boolean(isAdmin || showToolUsageChart || user?.role === 'admin');
   const currentUserEmail = (user?.email || '').trim().toLowerCase();
+
+  const CENTRAL_GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1O84kcu_A4V4Chsb6TPQEwGNxhuqu1Qml431I7yEQu3I/edit?gid=0#gid=0';
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const [isSheetLoading, setIsSheetLoading] = useState(true);
+  const [isCopiedSheetUrl, setIsCopiedSheetUrl] = useState(false);
+
+  const handleCopySheetUrl = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(CENTRAL_GOOGLE_SHEET_URL);
+    setIsCopiedSheetUrl(true);
+    setTimeout(() => setIsCopiedSheetUrl(false), 2000);
+  };
 
   const [backendLogs, setBackendLogs] = useState<any[]>([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
@@ -121,8 +144,23 @@ export default function PersonalDashboardView({
     }
   };
 
+  const [serverHistory, setServerHistory] = useState<any[]>([]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/history`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.history && Array.isArray(data.history)) {
+          setServerHistory(data.history);
+        }
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     fetchUserLogs();
+    fetchHistory();
   }, [token, currentUserEmail]);
 
   // Filter logs for this specific user
@@ -133,6 +171,112 @@ export default function PersonalDashboardView({
       return logEmail === currentUserEmail;
     });
   }, [backendLogs, currentUserEmail]);
+
+  // Calculate Tool Usage Statistics for Admin Chart (Image 2)
+  const adminToolStats = useMemo(() => {
+    const combinedHistory = [
+      ...serverHistory,
+      ...historyRecords,
+      ...atsHistoryRecords,
+      ...githubHistoryRecords,
+      ...linkedinHistoryRecords
+    ];
+
+    const uniqueHistoryMap = new Map<string, any>();
+    combinedHistory.forEach(h => {
+      const key = h.id || `${h.timestamp}_${h.operationName}`;
+      if (key && !uniqueHistoryMap.has(key)) {
+        uniqueHistoryMap.set(key, h);
+      }
+    });
+    const historyList = uniqueHistoryMap.size > 0 ? Array.from(uniqueHistoryMap.values()) : combinedHistory;
+
+    const ghHistory = historyList.filter(h => h.type === 'github' || /github/i.test(h.operationName || ''));
+    const ghLogs = backendLogs.filter(l => l.details && /github/i.test(l.details));
+    const githubRuns = Math.max(ghHistory.length, ghLogs.length);
+    const githubCandidates = ghHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.results ? h.results.length : 0)), 0);
+
+    const liHistory = historyList.filter(h => h.type === 'linkedin' || /linkedin/i.test(h.operationName || ''));
+    const liLogs = backendLogs.filter(l => l.details && /linkedin/i.test(l.details));
+    const linkedinRuns = Math.max(liHistory.length, liLogs.length);
+    const linkedinCandidates = liHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.results ? h.results.length : 0)), 0);
+
+    const screeningHistory = historyList.filter(h => (h.type === 'screening' || h.type === 'job') && !/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || '') && !/linkedin/i.test(h.operationName || ''));
+    const screeningLogs = backendLogs.filter(l => l.details && /screening|job|jd/i.test(l.details));
+    const screeningRuns = Math.max(screeningHistory.length, screeningLogs.length);
+    const screeningCandidates = screeningHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.candidates ? h.candidates.length : 0) || (h.results ? h.results.length : 0)), 0);
+
+    const atsHistory = historyList.filter(h => h.type === 'ats' || (/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || '') && !/linkedin/i.test(h.operationName || '')));
+    const atsLogs = backendLogs.filter(l => l.details && /ats/i.test(l.details));
+    const atsRuns = Math.max(atsHistory.length, atsLogs.length);
+    const atsCandidates = atsHistory.reduce((acc, h) => acc + (h.totalCandidates || (h.candidates ? h.candidates.length : 0) || (h.results ? h.results.length : 0)), 0);
+
+    const totalToolRuns = githubRuns + screeningRuns + atsRuns + linkedinRuns || 1;
+    const totalCandidatesCount = githubCandidates + screeningCandidates + atsCandidates + linkedinCandidates;
+
+    const githubPct = Math.round((githubRuns / totalToolRuns) * 100);
+    const linkedinPct = Math.round((linkedinRuns / totalToolRuns) * 100);
+    const screeningPct = Math.round((screeningRuns / totalToolRuns) * 100);
+    const atsPct = Math.round((atsRuns / totalToolRuns) * 100);
+
+    const toolsData = [
+      {
+        id: 'ats',
+        name: 'ATS Resume Check',
+        shortName: 'ATS Check',
+        runs: atsRuns,
+        candidates: atsCandidates,
+        pct: atsPct,
+        color: '#6366F1',
+        icon: CheckCircle2,
+        typeLabel: 'Resumes'
+      },
+      {
+        id: 'screening',
+        name: 'Resume Screener',
+        shortName: 'JD Screening',
+        runs: screeningRuns,
+        candidates: screeningCandidates,
+        pct: screeningPct,
+        color: '#4F46E5',
+        icon: FileText,
+        typeLabel: 'Resumes'
+      },
+      {
+        id: 'github',
+        name: 'GitHub Profile Auditor',
+        shortName: 'GitHub Check',
+        runs: githubRuns,
+        candidates: githubCandidates,
+        pct: githubPct,
+        color: '#A5B4FC',
+        icon: GithubIcon,
+        typeLabel: 'Profiles'
+      },
+      {
+        id: 'linkedin',
+        name: 'LinkedIn Profile Check',
+        shortName: 'LinkedIn Check',
+        runs: linkedinRuns,
+        candidates: linkedinCandidates,
+        pct: linkedinPct,
+        color: '#818CF8',
+        icon: LinkedinIcon,
+        typeLabel: 'Profiles'
+      }
+    ];
+
+    const mostUsed = [...toolsData].sort((a, b) => b.runs - a.runs)[0];
+    const maxRunCount = Math.max(...toolsData.map(t => t.runs), 1);
+
+    return {
+      toolsData,
+      mostUsed,
+      maxRunCount,
+      totalToolRuns,
+      totalCandidatesCount
+    };
+  }, [serverHistory, historyRecords, atsHistoryRecords, githubHistoryRecords, linkedinHistoryRecords, backendLogs]);
 
   // Helper to determine if an operation belongs to this user
   const doesRecordBelongToUser = (record: any) => {
@@ -146,14 +290,40 @@ export default function PersonalDashboardView({
       if (match) return true;
     }
 
-    // If there's only 1 active local session and record has no conflicting email
-    if (!record.userEmail && userLogs.length > 0) return true;
     return false;
   };
 
+  const allScreeningHistory = useMemo(() => {
+    const list = [...historyRecords, ...serverHistory.filter(h => (h.type === 'screening' || h.type === 'job') && !/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || '') && !/linkedin/i.test(h.operationName || ''))];
+    const map = new Map();
+    list.forEach(r => { const k = r.id || `${r.timestamp}_${r.operationName}`; if (!map.has(k)) map.set(k, r); });
+    return Array.from(map.values());
+  }, [historyRecords, serverHistory]);
+
+  const allAtsHistory = useMemo(() => {
+    const list = [...atsHistoryRecords, ...serverHistory.filter(h => h.type === 'ats' || (/ats/i.test(h.operationName || '') && !/github/i.test(h.operationName || '') && !/linkedin/i.test(h.operationName || '')))];
+    const map = new Map();
+    list.forEach(r => { const k = r.id || `${r.timestamp}_${r.operationName}`; if (!map.has(k)) map.set(k, r); });
+    return Array.from(map.values());
+  }, [atsHistoryRecords, serverHistory]);
+
+  const allGithubHistory = useMemo(() => {
+    const list = [...githubHistoryRecords, ...serverHistory.filter(h => h.type === 'github' || /github/i.test(h.operationName || ''))];
+    const map = new Map();
+    list.forEach(r => { const k = r.id || `${r.timestamp}_${r.operationName}`; if (!map.has(k)) map.set(k, r); });
+    return Array.from(map.values());
+  }, [githubHistoryRecords, serverHistory]);
+
+  const allLinkedinHistory = useMemo(() => {
+    const list = [...linkedinHistoryRecords, ...serverHistory.filter(h => h.type === 'linkedin' || /linkedin/i.test(h.operationName || ''))];
+    const map = new Map();
+    list.forEach(r => { const k = r.id || `${r.timestamp}_${r.operationName}`; if (!map.has(k)) map.set(k, r); });
+    return Array.from(map.values());
+  }, [linkedinHistoryRecords, serverHistory]);
+
   // User-specific Tool Records
   const myScreeningRecords = useMemo(() => {
-    return historyRecords.filter(r =>
+    return allScreeningHistory.filter(r =>
       !/ats/i.test(r.operationName || '') &&
       !/github/i.test(r.operationName || '') &&
       !/linkedin/i.test(r.operationName || '') &&
@@ -162,19 +332,19 @@ export default function PersonalDashboardView({
       (r as any).type !== 'linkedin' &&
       doesRecordBelongToUser(r)
     );
-  }, [historyRecords, userLogs, currentUserEmail]);
+  }, [allScreeningHistory, userLogs, currentUserEmail]);
 
   const myAtsRecords = useMemo(() => {
-    return atsHistoryRecords.filter(r => doesRecordBelongToUser(r));
-  }, [atsHistoryRecords, userLogs, currentUserEmail]);
+    return allAtsHistory.filter(r => doesRecordBelongToUser(r));
+  }, [allAtsHistory, userLogs, currentUserEmail]);
 
   const myGithubRecords = useMemo(() => {
-    return githubHistoryRecords.filter(r => doesRecordBelongToUser(r));
-  }, [githubHistoryRecords, userLogs, currentUserEmail]);
+    return allGithubHistory.filter(r => doesRecordBelongToUser(r));
+  }, [allGithubHistory, userLogs, currentUserEmail]);
 
   const myLinkedinRecords = useMemo(() => {
-    return linkedinHistoryRecords.filter(r => doesRecordBelongToUser(r));
-  }, [linkedinHistoryRecords, userLogs, currentUserEmail]);
+    return allLinkedinHistory.filter(r => doesRecordBelongToUser(r));
+  }, [allLinkedinHistory, userLogs, currentUserEmail]);
 
   const myNexViewRecords = useMemo(() => {
     return nexViewHistoryRecords.filter(r => doesRecordBelongToUser(r));
@@ -216,6 +386,22 @@ export default function PersonalDashboardView({
     myNexViewRecords.length > 0,
     userLogs.some(l => /assignment/i.test(l.details || ''))
   ].filter(Boolean).length;
+
+  // Display counts for Tool Breakdown Cards (Admin cards show Admin's personal counts)
+  const displayScreeningRuns = myScreeningRecords.length;
+  const displayScreeningCandidates = screeningCandidates;
+
+  const displayAtsRuns = myAtsRecords.length;
+  const displayAtsCandidates = atsCandidates;
+
+  const displayGithubRuns = myGithubRecords.length;
+  const displayGithubCandidates = githubCandidates;
+
+  const displayLinkedinRuns = myLinkedinRecords.length;
+  const displayLinkedinCandidates = linkedinCandidates;
+
+  const displayNexViewRuns = myNexViewRecords.length;
+  const displayNexViewCandidates = nexViewInterviews;
 
   // Unified Chronological Activity Timeline
   const timelineActivities = useMemo(() => {
@@ -411,7 +597,7 @@ export default function PersonalDashboardView({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                  {user?.name || 'Personal Workspace'}
+                  {showToolUsageChart ? `${user?.name || 'Admin'} (Admin Dashboard)` : (user?.name || 'Personal Workspace')}
                 </h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border ${
                   user?.role === 'admin'
@@ -420,6 +606,12 @@ export default function PersonalDashboardView({
                 }`}>
                   {user?.role || 'Mentor / User'}
                 </span>
+                {showToolUsageChart && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                    Admin Personal Dashboard
+                  </span>
+                )}
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Active Account
@@ -452,6 +644,7 @@ export default function PersonalDashboardView({
             <button
               onClick={() => {
                 fetchUserLogs();
+                fetchHistory();
                 if (onSyncHistory) onSyncHistory();
               }}
               disabled={isLogsLoading || isSyncing}
@@ -465,13 +658,26 @@ export default function PersonalDashboardView({
               <span>{isLogsLoading || isSyncing ? 'Syncing Activity...' : 'Sync Activity Stats'}</span>
             </button>
 
-            <button
-              onClick={() => onNavigateTab('screening')}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
-            >
-              <PlayCircle className="w-4 h-4" />
-              <span>Launch Screening</span>
-            </button>
+            {isAdministrator ? (
+              <a
+                href={CENTRAL_GOOGLE_SHEET_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/25 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Central Google Sheet</span>
+                <ExternalLink className="w-3.5 h-3.5 ml-0.5 opacity-80" />
+              </a>
+            ) : (
+              <button
+                onClick={() => onNavigateTab('screening')}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
+              >
+                <PlayCircle className="w-4 h-4" />
+                <span>Launch Screening</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -559,6 +765,303 @@ export default function PersonalDashboardView({
         </div>
       </div>
 
+      {/* 2.4 Central Google Sheet Master Database Section (For Admin) */}
+      {isAdministrator && (
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all shadow-sm ${
+          isDark
+            ? 'bg-gradient-to-r from-emerald-950/30 via-slate-900 to-indigo-950/20 border-emerald-500/30 text-white'
+            : 'bg-gradient-to-r from-emerald-50/70 via-white to-indigo-50/40 border-emerald-200 text-slate-900'
+        }`}>
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            {/* Left Info Area - Clickable to toggle sheet preview */}
+            <div 
+              onClick={() => setIsSheetExpanded(prev => !prev)}
+              className="flex items-start gap-4 cursor-pointer select-none group flex-1"
+            >
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 group-hover:scale-105 group-hover:border-emerald-400 transition-all shadow-xs shrink-0">
+                <FileSpreadsheet className="w-7 h-7 text-emerald-400" />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
+                    <span>Central Master Google Sheet</span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                      সেন্ট্রাল শিট ডেটাবেজ
+                    </span>
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Cloud Sync Active
+                  </span>
+                </div>
+
+                <p className={`text-xs mt-1.5 max-w-2xl leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  সকল ক্যান্ডিডেট স্ক্রিনিং, রেজাল্ট ডেটা, শর্টলিস্ট স্ট্যাটাস এবং অ্যাক্টিভিটি হিস্ট্রি স্বয়ংক্রিয়ভাবে এই সেন্ট্রাল গুগল শিটে রিয়েল-টাইমে সিঙ্ক ও স্টোর হচ্ছে। ক্লিক করে সরাসরি ডেটাবেজ শিট দেখুন।
+                </p>
+
+                {/* Live Sheet URL Pill & Badges */}
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  <div className={`px-2.5 py-1 rounded-lg text-[11px] font-mono border flex items-center gap-1.5 ${
+                    isDark ? 'bg-slate-950/60 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}>
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate max-w-[280px] sm:max-w-md">
+                      {CENTRAL_GOOGLE_SHEET_URL}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                    isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  }`}>
+                    0% AI Tokens • Deterministic
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full lg:w-auto shrink-0">
+              {/* Toggle Inline Preview */}
+              <button
+                type="button"
+                onClick={() => setIsSheetExpanded(prev => !prev)}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                  isSheetExpanded
+                    ? isDark
+                      ? 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700'
+                      : 'bg-slate-200 text-slate-900 border-slate-300 hover:bg-slate-300'
+                    : isDark
+                      ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                }`}
+              >
+                {isSheetExpanded ? <EyeOff className="w-4 h-4 text-emerald-400" /> : <Eye className="w-4 h-4 text-emerald-400" />}
+                <span>{isSheetExpanded ? 'Hide Sheet Preview' : 'View Central Sheet'}</span>
+                {isSheetExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {/* Copy URL Button */}
+              <button
+                type="button"
+                onClick={handleCopySheetUrl}
+                title="Copy Google Sheet Link"
+                className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-center cursor-pointer ${
+                  isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                }`}
+              >
+                {isCopiedSheetUrl ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              </button>
+
+              {/* Open in New Window */}
+              <a
+                href={CENTRAL_GOOGLE_SHEET_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Open in Google Sheets</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </a>
+            </div>
+          </div>
+
+          {/* Inline Interactive Google Sheet Viewer */}
+          {isSheetExpanded && (
+            <div className={`mt-5 rounded-xl border overflow-hidden transition-all duration-300 ${
+              isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
+            }`}>
+              {/* Iframe Top Bar */}
+              <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-3 text-xs ${
+                isDark ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+              }`}>
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-semibold text-emerald-400">Live Central Sheet View:</span>
+                  <span className="text-[11px] truncate max-w-xs sm:max-w-md opacity-80">
+                    Google Spreadsheets Viewer (All Candidate Records & Logs)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={CENTRAL_GOOGLE_SHEET_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline flex items-center gap-1 font-semibold text-emerald-400"
+                  >
+                    <span>Full Tab</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setIsSheetExpanded(false)}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Iframe Container */}
+              <div className="relative w-full h-[600px] bg-slate-900">
+                {isSheetLoading && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/80 backdrop-blur-xs text-white">
+                    <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-medium tracking-wide text-slate-300">
+                      Loading Central Google Sheet...
+                    </span>
+                  </div>
+                )}
+                <iframe
+                  src="https://docs.google.com/spreadsheets/d/1O84kcu_A4V4Chsb6TPQEwGNxhuqu1Qml431I7yEQu3I/preview"
+                  title="Central Master Google Sheet"
+                  onLoad={() => setIsSheetLoading(false)}
+                  className="w-full h-full border-0"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2.5 Admin Tool Usage Analytics & Statistics (Bar Chart - Image 2) */}
+      {showToolUsageChart && (
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <BarChart3 className="w-4.5 h-4.5 text-indigo-500" />
+                <span className={isDark ? 'text-white' : 'text-slate-900'}>
+                  Tool Usage Analytics & Statistics (কোন Tool কেমন Use হচ্ছে)
+                </span>
+              </h3>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Real-time execution analytics across all 3 AI-Free screening tools
+              </p>
+            </div>
+
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+            }`}>
+              Total Executed: {adminToolStats.totalToolRuns} Operations ({adminToolStats.totalCandidatesCount} Candidates)
+            </span>
+          </div>
+
+          <div className={`w-full p-5 sm:p-6 rounded-2xl border transition shadow-xs flex flex-col justify-between ${
+            isDark ? 'bg-slate-900/80 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div>
+              <div className="flex items-center justify-between border-b pb-3 mb-3 border-slate-200 dark:border-slate-800">
+                <div>
+                  <h4 className="text-xs font-bold tracking-wide uppercase text-indigo-500 flex items-center gap-1.5">
+                    <Activity className="w-4 h-4" /> TOOL EXECUTIONS FREQUENCY (BAR CHART)
+                  </h4>
+                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Showing total execution count per tool (Actual run numbers, not percentage)
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  ⚡ Live Counts
+                </span>
+              </div>
+
+              {/* Highlight Banner: Most Used Tool */}
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs mb-3 ${
+                isDark
+                  ? 'bg-indigo-950/40 border-indigo-500/30 text-slate-200'
+                  : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs">
+                      Most Used Tool: <strong>{adminToolStats.mostUsed.name}</strong>
+                    </span>
+                    <span className={`block text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Total {adminToolStats.mostUsed.runs} runs recorded ({adminToolStats.mostUsed.pct}% of all operations)
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-600 text-white shadow-xs">
+                  {adminToolStats.mostUsed.runs} Executions
+                </span>
+              </div>
+            </div>
+
+            {/* Vertical Comparative Bars showing RUN COUNT */}
+            <div className="h-56 pt-2 pb-2 flex items-end justify-around gap-6">
+              {adminToolStats.toolsData.map(tool => {
+                const isTop = tool.id === adminToolStats.mostUsed.id;
+                const heightPct = Math.max(25, Math.round((tool.runs / adminToolStats.maxRunCount) * 100));
+                const targetTab = tool.id === 'ats'
+                  ? 'adminAtsHistory'
+                  : tool.id === 'screening'
+                  ? 'adminScreeningHistory'
+                  : tool.id === 'github'
+                  ? 'adminGithubHistory'
+                  : 'adminLinkedinHistory';
+
+                return (
+                  <div
+                    key={tool.id}
+                    onClick={() => onNavigateTab(targetTab)}
+                    title={`Click to view ${tool.name} History & Statistics`}
+                    className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
+                  >
+                    {/* Top Label: Badge & Exact Run Count */}
+                    <div className="flex flex-col items-center mb-1.5 transition-transform group-hover:-translate-y-1">
+                      {isTop && (
+                        <span className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-0.5 mb-0.5">
+                          <Trophy className="w-3 h-3" /> Most Used
+                        </span>
+                      )}
+                      <span className={`text-sm font-black ${isTop ? 'text-indigo-600 dark:text-indigo-400' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {tool.runs} Runs
+                      </span>
+                    </div>
+
+                    {/* Bar with exact count inside */}
+                    <div className={`w-full max-w-[72px] rounded-t-xl h-full flex items-end p-1.5 relative overflow-hidden transition group-hover:ring-2 group-hover:ring-indigo-500/50 ${
+                      isDark ? 'bg-slate-800/70' : 'bg-slate-100'
+                    }`}>
+                      <div
+                        className={`w-full rounded-t-lg transition-all duration-700 relative flex items-center justify-center shadow-md ${
+                          isTop
+                            ? 'bg-gradient-to-t from-indigo-700 to-indigo-500 ring-2 ring-indigo-400/50'
+                            : 'bg-gradient-to-t from-indigo-900 to-indigo-600 dark:from-indigo-800 dark:to-indigo-500'
+                        }`}
+                        style={{ height: `${heightPct}%` }}
+                      >
+                        {/* Exact Run Count inside Bar */}
+                        <span className="text-xs font-black text-white drop-shadow-md">
+                          {tool.runs}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Tool Name & Evaluated count */}
+                    <div className="mt-2.5 text-center w-full">
+                      <span className={`block text-xs font-bold truncate group-hover:text-indigo-500 transition-colors ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {tool.shortName}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                        {tool.candidates} {tool.typeLabel}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3. Tool-by-Tool Usage Breakdown Cards */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -589,37 +1092,42 @@ export default function PersonalDashboardView({
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
-                  {myScreeningRecords.length} Runs
+                  {displayScreeningRuns} Runs
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center pt-1">
                 <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-[10px] text-slate-400 block">Total</span>
-                  <span className="text-base font-black font-mono">{screeningCandidates}</span>
+                  <span className="text-base font-black font-mono">{displayScreeningCandidates}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">Shortlist</span>
                   <span className="text-base font-black font-mono">{screeningGoodToGo}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <span className="text-[10px] block opacity-80">Waitlist</span>
                   <span className="text-base font-black font-mono">{screeningWaiting}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('screening')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Open Resume Screener</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'adminScreeningHistory' : 'screening')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>{isAdministrator ? 'View Screening History & Stats' : 'Open Resume Screener'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Tool Card 2: ATS Resume Check */}
@@ -629,46 +1137,51 @@ export default function PersonalDashboardView({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <FileCheck className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>ATS Resume Check</h4>
-                    <span className="text-[10px] font-mono text-emerald-400 font-semibold">100-Point Rubric</span>
+                    <span className="text-[10px] font-mono text-indigo-400 font-semibold">100-Point Rubric</span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
-                  {myAtsRecords.length} Runs
+                  {displayAtsRuns} Runs
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center pt-1">
                 <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-[10px] text-slate-400 block">Total</span>
-                  <span className="text-base font-black font-mono">{atsCandidates}</span>
+                  <span className="text-base font-black font-mono">{displayAtsCandidates}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">Friendly</span>
                   <span className="text-base font-black font-mono">{atsFriendly}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                   <span className="text-[10px] block opacity-80">Review</span>
                   <span className="text-base font-black font-mono">{atsNeedsWork}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('atsCheck')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Open ATS Check</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'adminAtsHistory' : 'atsCheck')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>{isAdministrator ? 'View ATS History & Stats' : 'Open ATS Check'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Tool Card 3: GitHub Profile Check */}
@@ -678,42 +1191,47 @@ export default function PersonalDashboardView({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <GithubIcon className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>GitHub Auditor</h4>
-                    <span className="text-[10px] font-mono text-sky-400 font-semibold">60-Point Quantitative</span>
+                    <span className="text-[10px] font-mono text-indigo-400 font-semibold">60-Point Quantitative</span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
-                  {myGithubRecords.length} Runs
+                  {displayGithubRuns} Runs
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-[10px] text-slate-400 block">Profiles Audited</span>
-                  <span className="text-base font-black font-mono">{githubCandidates}</span>
+                  <span className="text-base font-black font-mono">{displayGithubCandidates}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-sky-500/10 border-sky-500/20 text-sky-400' : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">High Scores (40+)</span>
                   <span className="text-base font-black font-mono">{githubHigh}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('githubCheck')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-sky-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-sky-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Open GitHub Auditor</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'adminGithubHistory' : 'githubCheck')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>{isAdministrator ? 'View GitHub History & Stats' : 'Open GitHub Auditor'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Tool Card 4: LinkedIn Profile Check */}
@@ -723,42 +1241,47 @@ export default function PersonalDashboardView({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <LinkedinIcon className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>LinkedIn Auditor</h4>
-                    <span className="text-[10px] font-mono text-blue-400 font-semibold">60-Point Quantitative</span>
+                    <span className="text-[10px] font-mono text-indigo-400 font-semibold">60-Point Quantitative</span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
-                  {myLinkedinRecords.length} Runs
+                  {displayLinkedinRuns} Runs
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-[10px] text-slate-400 block">Profiles Audited</span>
-                  <span className="text-base font-black font-mono">{linkedinCandidates}</span>
+                  <span className="text-base font-black font-mono">{displayLinkedinCandidates}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">High Scores (40+)</span>
                   <span className="text-base font-black font-mono">{linkedinHigh}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('linkedinCheck')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Open LinkedIn Auditor</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'adminLinkedinHistory' : 'linkedinCheck')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>{isAdministrator ? 'View LinkedIn History & Stats' : 'Open LinkedIn Auditor'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Tool Card 5: NexView Interview Tool */}
@@ -768,42 +1291,47 @@ export default function PersonalDashboardView({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <Tv className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>NexView Tool</h4>
-                    <span className="text-[10px] font-mono text-amber-400 font-semibold">Live Interview System</span>
+                    <span className="text-[10px] font-mono text-indigo-400 font-semibold">Live Interview System</span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
-                  {myNexViewRecords.length} Sessions
+                  {displayNexViewRuns} Sessions
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-center pt-1">
                 <div className={`p-2 rounded-xl border ${isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-[10px] text-slate-400 block">Interview Sessions</span>
-                  <span className="text-base font-black font-mono">{nexViewInterviews}</span>
+                  <span className="text-base font-black font-mono">{displayNexViewCandidates}</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">Portal Status</span>
                   <span className="text-xs font-bold font-mono">Live Integrated</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('nexView')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-amber-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Launch NexView</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'adminNexViewHistory' : 'nexView')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>{isAdministrator ? 'View NexView History & Stats' : 'Launch NexView'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Tool Card 6: AI Assignment Check */}
@@ -813,12 +1341,12 @@ export default function PersonalDashboardView({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
                     <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>AI Assignment Check</h4>
-                    <span className="text-[10px] font-mono text-purple-400 font-semibold">Evaluation Rubrics</span>
+                    <span className="text-[10px] font-mono text-indigo-400 font-semibold">Evaluation Rubrics</span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-500/10 text-slate-300">
@@ -831,24 +1359,29 @@ export default function PersonalDashboardView({
                   <span className="text-[10px] text-slate-400 block">Rubric Evaluator</span>
                   <span className="text-base font-black font-mono">0% Tokens</span>
                 </div>
-                <div className={`p-2 rounded-xl border ${isDark ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-700'}`}>
+                <div className={`p-2 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
                   <span className="text-[10px] block opacity-80">Automation</span>
                   <span className="text-xs font-bold font-mono">Instant Rubric</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={() => onNavigateTab('aiAssignmentCheck')}
-              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-purple-600 hover:text-white text-slate-200 border-slate-700'
-                  : 'bg-slate-100 hover:bg-purple-600 hover:text-white text-slate-700 border-slate-300'
-              }`}
-            >
-              <span>Open AI Assignment</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => onNavigateTab(isAdministrator ? 'history' : 'aiAssignmentCheck')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs ${
+                  isAdministrator
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-indigo-600/25'
+                    : isDark
+                    ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-200 border-slate-700'
+                    : 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{isAdministrator ? 'View AI Assignment Tool & Stats' : 'Open AI Assignment'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

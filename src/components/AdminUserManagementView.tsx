@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { AuthUser, LoginAuditLog, TEAM_OPTIONS } from '../types';
+import { AuthUser, LoginAuditLog, TEAM_OPTIONS, isValidOrgEmail } from '../types';
 import { ShieldAlert, Users, UserCheck, UserX, ShieldCheck, Edit, Clock, Search, RefreshCw, X, Save, AlertCircle, FileText, CheckCircle2, BarChart3, Activity, Trophy, Sparkles } from 'lucide-react';
 
 const GithubIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -202,6 +202,9 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
 
     try {
       setErrorMsg(null);
+      // Optimistically update local state immediately
+      setUsers(prev => prev.map(u => (u.id === userToToggle.id || u.email === userToToggle.email) ? { ...u, role: newRole } : u));
+
       const res = await fetch(`${BACKEND_URL}/api/admin/users/${userToToggle.id}/role`, {
         method: 'PUT',
         headers: {
@@ -214,9 +217,10 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
       const data = await res.json();
       if (res.ok && data.success) {
         setSuccessMsg(`User "${userToToggle.name}" is now updated to ${newRole === 'admin' ? 'Admin' : 'User'}.`);
-        setUsers(prev => prev.map(u => (u.id === userToToggle.id || u.email === userToToggle.email) ? { ...u, role: newRole } : u));
-        fetchUsers();
+        await fetchUsers();
       } else {
+        // Rollback optimistic update
+        setUsers(prev => prev.map(u => (u.id === userToToggle.id || u.email === userToToggle.email) ? { ...u, role: userToToggle.role } : u));
         throw new Error(data.error || 'Role update failed.');
       }
     } catch (err: any) {
@@ -231,6 +235,13 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
 
     try {
       setErrorMsg(null);
+      const cleanEmail = editEmail.trim().toLowerCase();
+      if (editEmail && !isValidOrgEmail(cleanEmail) && cleanEmail !== 'admin@admin.com') {
+        setErrorMsg('Invalid email address. Email must contain ".ph@gmail.com" or "programming-hero.com".');
+        setIsUpdating(false);
+        return;
+      }
+
       const res = await fetch(`${BACKEND_URL}/api/admin/users/${editingUser.id}/edit`, {
         method: 'PUT',
         headers: {
@@ -937,17 +948,27 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
                               <Edit className="w-3.5 h-3.5" /> Edit
                             </button>
 
-                            <button
-                              onClick={() => handleToggleRole(u)}
-                              className={`px-2.5 py-1.5 rounded-lg font-bold transition text-xs inline-flex items-center gap-1 cursor-pointer ${
-                                isDark
-                                  ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30'
-                                  : 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border border-indigo-300'
-                              }`}
-                              title={u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" /> {u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                            </button>
+                            {u.email?.toLowerCase() === 'nexadmin.ph@gmail.com' || u.id === 'usr_admin_nex' ? (
+                              <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 inline-flex items-center">
+                                Root Admin
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleRole(u)}
+                                className={`px-2.5 py-1.5 rounded-lg font-bold transition text-xs inline-flex items-center gap-1 cursor-pointer ${
+                                  u.role === 'admin'
+                                    ? isDark
+                                      ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30 border border-amber-500/30'
+                                      : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                                    : isDark
+                                      ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30'
+                                      : 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border border-indigo-300'
+                                }`}
+                                title={u.role === 'admin' ? 'Change this admin to regular user' : 'Promote this user to admin'}
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" /> {u.role === 'admin' ? 'Make User' : 'Make Admin'}
+                              </button>
+                            )}
 
                             <button
                               onClick={() => handleToggleStatus(u)}
@@ -1064,13 +1085,20 @@ export default function AdminUserManagementView({ theme = 'dark', initialSubTab 
               </div>
 
               <div>
-                <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Email Address</label>
+                <label className={`block text-xs font-semibold mb-1 flex items-center justify-between ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <span>Email Address</span>
+                  <span className={`text-[10px] font-mono ${isValidOrgEmail(editEmail) || editEmail.trim().toLowerCase() === 'admin@admin.com' ? 'text-emerald-500 font-bold' : 'text-rose-500'}`}>
+                    {isValidOrgEmail(editEmail) || editEmail.trim().toLowerCase() === 'admin@admin.com' ? '✓ Valid Domain' : 'Must contain .ph@gmail.com or programming-hero.com'}
+                  </span>
+                </label>
                 <input
                   type="email"
                   required
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                   className={`w-full border rounded-xl px-3.5 py-2 text-xs ${
+                    editEmail && !isValidOrgEmail(editEmail) && editEmail.trim().toLowerCase() !== 'admin@admin.com' ? 'border-rose-500' : ''
+                  } ${
                     isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
